@@ -67,6 +67,9 @@ public class QrController {
             // Hash the password before saving
             qrService.hashPassword(qr);
 
+        // Explicitly set isActive = true before saving
+        qr.setActive(true);
+
             // Save or update QR data
             try {
                 Qr savedQr = qrService.saveQrData(qr);  // Delegate to service for saving
