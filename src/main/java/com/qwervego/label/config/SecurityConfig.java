@@ -63,6 +63,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/qr").permitAll()  // Allow GET requests to /api/qr without authentication
                         .requestMatchers(HttpMethod.POST, "/api/qr/add").permitAll()  // Allow POST requests to /api/qr/add without authentication
+                        .requestMatchers(HttpMethod.PUT, "/api/qr/*").permitAll()  // Allow POST requests to /api/qr/add without authentication
                         .anyRequest().authenticated())  // Secure all other requests
                 .httpBasic(Customizer.withDefaults());  // Enable HTTP Basic Authentication for testing
 

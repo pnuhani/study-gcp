@@ -13,16 +13,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -47,7 +41,7 @@ public class QrController {
 
 
     @PostMapping("/add")
-    public ResponseEntity<Object> createOrUpdateQR(@Valid @RequestBody Qr qr, BindingResult result) {
+    public ResponseEntity<Object> addDetails(@Valid @RequestBody Qr qr, BindingResult result) {
         // Handle validation using QrService
         ErrorResponse validationError = qrService.validateQrData(qr, result);
         if (validationError != null) {
@@ -80,20 +74,8 @@ public class QrController {
             }
         }
 
-        // Delete QR by ID
-   /* @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteQR(@PathVariable String id) {
-        logger.info("Attempting to delete QR data for ID: {}", id);
-
-        *//*if (qrRepository.existsById(id)) {
-            qrRepository.deleteById(id);
-            logger.info("QR data deleted successfully for ID: {}", id);
-            return ResponseEntity.ok("QR deleted successfully.");
-        } else {
-            logger.warn("QR data not found for ID: {}", id);
-            return ResponseEntity.status(404).body("QR not found.");
-        }*//*
+    @PutMapping("/update")
+    public ResponseEntity<Object> updateQR(@RequestBody Map<String, Object> updates) {
+        return qrService.processQrUpdate(updates);
     }
-//    }*/
-
     }
