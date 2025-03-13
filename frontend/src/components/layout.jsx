@@ -4,33 +4,26 @@ import PropTypes from 'prop-types';
 
 
 
-export default function Layout({ children, title }) {
+export default function Layout({ children }) {
   return (
-    <Box style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <AppBar position="static" style={{ backgroundColor: '#3a5a78' }}>
-        <Toolbar>
-          <QrCodeIcon style={{ marginRight: '10px' }} />
-          <Typography variant="h3" component="div" style={{ flexGrow: 1, fontSize: '1.1rem' }}>
-            COMPANY NAME
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <Container maxWidth="md" style={{ marginTop: '2rem', marginBottom: '2rem' }}>
-        <Typography variant="h4" component="h1" style={{ marginBottom: '1.5rem', color: '#3a5a78', textAlign: 'center', fontSize: '2rem' }}>
-          {title}
-        </Typography>
-        <Box style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          {children}
-        </Box>
-      </Container>
-
-    </Box>
-  );
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      {/* {title && (
+        <header className="bg-white shadow-sm py-4">
+          <div className="container mx-auto px-4">
+            <h1 className="text-xl font-semibold text-gray-800">{title}</h1>
+          </div>
+        </header>
+      )} */}
+      <main className="flex-1 flex items-center justify-center">
+        <div className="w-full">{children}</div>
+      </main>
+    </div>
+  )
 }
 
 Layout.propTypes = {
   children: PropTypes.node.isRequired,
-  title: PropTypes.string.isRequired
+  // title: PropTypes.string.isRequired
 };
 
 

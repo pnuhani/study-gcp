@@ -65,11 +65,13 @@ public class QrService {
 
         return new QrResponse(
                 qrData.getId(),
+                qrData.isActive(),
                 qrData.getName(),
                 qrData.getEmail(),
                 qrData.getAddress(),
                 qrData.getPhoneNumber(),
-                qrData.isActive()
+                qrData.getCreatedDate(),
+                qrData.getActivationDate()
         );
     }
     // Handle QR Update logic (Refactored from Controller)
