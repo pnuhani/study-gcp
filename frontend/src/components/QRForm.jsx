@@ -51,16 +51,25 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
     try {
       if (isEdit) {
         const result = await api.updateQRInfo(id, data)
-        // Call the onUpdateSuccess callback regardless of result structure
-        // as the fetchWithErrorHandling already throws errors on failed requests
         if (onUpdateSuccess) {
           onUpdateSuccess()
         } else {
           navigate(`/qr/${id}`)
         }
       } else {
+        const qrExists = await api.checkQRExists(id)
+        
+        if (!qrExists.exists) {
+          setServerError("Invalid QR code. This QR code does not exist in our system.")
+          return
+        }
+        
+        if (qrExists.isActive) {
+          setServerError("This QR code is already registered.")
+          return
+        }
+        
         const result = await api.submitQRForm(id, data)
-        // Same here - don't check for result.success
         navigate(`/qr/${id}`)
       }
     } catch (error) {

@@ -21,25 +21,31 @@ function QRDisplay() {
     const fetchData = async () => {
       try {
         const result = await api.getQRInfo(id)
-        console.log("QR Data received:", result); // Debug line
+        console.log("QR Data received:", result);
         
-        // Check for active status in any possible form
-        const isQrActive = result && 
-          (result.isActive === true || 
-           result.active === true || 
-           result.isActive === 'true' || 
-           result.active === 'true');
         
-        if (!result || !isQrActive) {
-          console.log("QR not active, redirecting to register page");
-          navigate(`/qr/${id}/register`)
-          return
+        if (result) {
+          const isQrActive = 
+            result.isActive === true || 
+            result.active === true || 
+            result.isActive === 'true' || 
+            result.active === 'true';
+          
+          if (!isQrActive) {
+            
+            console.log("QR not active, redirecting to register page");
+            navigate(`/qr/${id}/register`)
+            return
+          }
+          
+          setData(result)
+        } else {
+          
+          setError("Invalid QR code. This QR code does not exist in our system.")
         }
-        
-        setData(result)
       } catch (error) {
         console.error("Error:", error)
-        setError("QR code not found")
+        setError("QR code not found or is invalid")
       } finally {
         setLoading(false)
       }

@@ -37,7 +37,7 @@ export default function AdminDashboard() {
       const pagePromises = [0, 1, 2].map(page => api.getQRBatch(page, pageSize))
       const results = await Promise.all(pagePromises)
       
-      // Process the first page data for immediate display
+
       const firstPageData = results[0]
       setQrCodes(firstPageData.qrCodes || [])
       setTotalItems(firstPageData.totalItems || 0)
@@ -61,28 +61,28 @@ export default function AdminDashboard() {
   }
 
   const fetchPage = async (page) => {
-    // If we already have this page cached, use it
+    
     if (loadedPages[page]) {
       setQrCodes(loadedPages[page])
       setCurrentPage(page)
       return
     }
     
-    // Otherwise fetch it from the server
+
     setLoadingPage(page)
     try {
       const result = await api.getQRBatch(page, pageSize)
       if (result && result.qrCodes) {
-        // Update the displayed QR codes
+
         setQrCodes(result.qrCodes)
         
-        // Cache the new page
+        
         setLoadedPages(prev => ({
           ...prev,
           [page]: result.qrCodes
         }))
         
-        // Update pagination info
+
         setTotalItems(result.totalItems || totalItems)
         setTotalPages(result.totalPages || totalPages)
         setCurrentPage(page)
@@ -108,7 +108,7 @@ export default function AdminDashboard() {
     fetchInitialPages()
   }
 
-  // Rest of your existing functions...
+  
   const handleCheckboxChange = (id) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))
   }
@@ -119,7 +119,7 @@ export default function AdminDashboard() {
     try {
       const result = await api.generateQRCodeBatch(batchSize)
       if (result.success) {
-        fetchQRCodes() // Refetch all pages after generating new QRs
+        fetchQRCodes() 
       } else {
         setError("Failed to generate QR codes")
       }
@@ -162,13 +162,13 @@ export default function AdminDashboard() {
     navigate("/admin/login")
   }
 
-  // Calculate pagination indicators
+
   const startItem = currentPage * pageSize + 1
   const endItem = Math.min((currentPage + 1) * pageSize, totalItems)
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header remains the same */}
+    
       <header className="bg-white shadow-sm border-b">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 flex items-center">
@@ -193,7 +193,7 @@ export default function AdminDashboard() {
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid gap-6">
-          {/* Error display remains the same */}
+          
           {error && (
             <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-md flex items-center">
               <svg
@@ -212,7 +212,6 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Generate QR Codes section remains the same */}
           <div className="bg-white shadow rounded-lg p-6 mb-6">
             <h2 className="text-lg font-medium mb-4 flex items-center">
               Generate New QR Codes

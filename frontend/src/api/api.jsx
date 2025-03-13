@@ -26,37 +26,6 @@ const fetchWithErrorHandling = async (url, options = {}) => {
 };
 
 
-// // Mock data for demonstration
-// const MOCK_DATA = {
-//   qr123: {
-//     id: "qr123",
-//     isActive: true,
-//     name: "John Doe",
-//     email: "john@example.com",
-//     address: "123 Main St, City",
-//     phoneNumber: "+1234567890",
-//     password: "qr123pass",
-//     createdAt: new Date(2025, 0, 15).toISOString(),
-//     activatedAt: new Date(2025, 1, 20).toISOString()
-//   },
-//   qr456: {
-//     id: "qr456",
-//     isActive: false,
-//     name: "",
-//     email: "",
-//     address: "",
-//     phoneNumber: "",
-//     password: "",
-//     createdAt: new Date(2025, 1, 10).toISOString(),
-//     activatedAt: null
-//   }
-// };
-
-// // Mock admin credentials
-// const ADMIN_CREDENTIALS = {
-//   username: "admin",
-//   password: "admin123"
-// };
 
 
 const generateRandomId = (length = 8) => {
@@ -71,20 +40,17 @@ const generateRandomId = (length = 8) => {
 
 export const api = {
 
-  // Customer QR functions
 
   getQRInfo: async (qrId) => {
     try {
       const response = await fetchWithErrorHandling(`${BASE_URL}/qr?id=${qrId}`);
-      console.log("Raw QR API response:", response); // Debug logging
+      console.log("Raw QR API response:", response); 
       
-      // Normalize the active status
       if (response) {
         if (response.active !== undefined && response.isActive === undefined) {
           response.isActive = response.active;
         }
         
-        // Convert string values to booleans if needed
         if (response.isActive === 'true') response.isActive = true;
         if (response.isActive === 'false') response.isActive = false;
       }
@@ -141,7 +107,6 @@ export const api = {
     });
   },
 
-  // Admin functions
   adminLogin: async (username, password) => {
     try {
       console.log("Attempting login with:", username);
@@ -197,6 +162,25 @@ export const api = {
     });
   },
 
+  checkQRExists: async (qrId) => {
+    try {
+      const response = await fetchWithErrorHandling(`${BASE_URL}/qr?id=${qrId}`);
+      
+      return { 
+        exists: true, 
+        isActive: response && (
+          response.isActive === true || 
+          response.active === true || 
+          response.isActive === 'true' || 
+          response.active === 'true'
+        )
+      };
+    } catch (error) {
+      console.error('Error checking QR existence:', error);
+      return { exists: false, isActive: false };
+    }
+  },
+
   generateQRCodeBatch: async (quantity) => {
     const token = localStorage.getItem("adminToken");
     return fetchWithErrorHandling(`${BASE_URL}/qr/generate`, {
@@ -215,7 +199,6 @@ export const api = {
     }
     
     try {
-      // First fetch QR data from backend
       const token = localStorage.getItem("adminToken");
       const qrData = await fetchWithErrorHandling(`${BASE_URL}/qr/batch`, {
         method: 'POST',
@@ -226,12 +209,11 @@ export const api = {
         body: JSON.stringify({ ids: qrIds }),
       });
       
-      // Then generate PDF client-side
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       
-      // PDF generation logic (you can keep your existing PDF generation code)
+      // PDF generation logic 
       const qrSize = 65;
       const margin = 20;
       const qrPerRow = 2;
