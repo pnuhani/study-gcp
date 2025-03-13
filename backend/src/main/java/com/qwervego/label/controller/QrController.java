@@ -1,11 +1,19 @@
 package com.qwervego.label.controller;
 
-import com.qwervego.label.dto.ErrorResponse;
-import com.qwervego.label.dto.QrResponse;
-import com.qwervego.label.exception.QrNotFoundException;
-import com.qwervego.label.model.Qr;
-import com.qwervego.label.repository.QrRepository;
-import com.qwervego.label.service.QrService;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Random;
+import java.util.stream.Collectors;
+
+import javax.validation.Valid;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,15 +22,20 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import javax.validation.Valid;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.qwervego.label.dto.ErrorResponse;
+import com.qwervego.label.dto.QrResponse;
+import com.qwervego.label.model.Qr;
+import com.qwervego.label.repository.QrRepository;
+import com.qwervego.label.service.QrService;
 
 @RestController
 @RequestMapping("/api/qr")
@@ -39,53 +52,37 @@ public class QrController {
         this.qrRepository = qrRepository1;
     }
 
-//    // Get QR data by ID
-//    @GetMapping
-//    public ResponseEntity<QrResponse> getQRById(@RequestParam("id") String id) {
-//        QrResponse response = qrService.getQrById(id);
-//        return ResponseEntity.ok(response);
-//    }
-
 
     @PostMapping("/add")
     public ResponseEntity<Object> addDetails(@Valid @RequestBody Qr qr, BindingResult result) {
-        // Handle validation using QrService
         ErrorResponse validationError = qrService.validateQrData(qr, result);
         if (validationError != null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(validationError);
         }
 
-        // Check if the QR ID already exists and isActive is true
         Optional<Qr> existingQrOpt = qrRepository.findById(qr.getId());
         if (existingQrOpt.isPresent()) {
             Qr existingQr = existingQrOpt.get();
 
             if (existingQr.isActive()) {
-                // If the ID exists and isActive is true, return a conflict response
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new ErrorResponse("Tag already active, invalid request"));
             }
 
-            // Preserve the created date if it exists
             if (existingQr.getCreatedDate() != null) {
                 qr.setCreatedDate(existingQr.getCreatedDate());
             } else {
-                // Set created date if not present
                 qr.setCreatedDate(new Date());
             }
         } else {
-            // Brand new QR code
             qr.setCreatedDate(new Date());
         }
 
-        // Set activation date and active status
         qr.setActivationDate(new Date());
         qr.setActive(true);
 
-        // Hash the password before saving
         qrService.hashPassword(qr);
 
-        // Save or update QR data
         try {
             Qr savedQr = qrService.saveQrData(qr);
             return ResponseEntity.ok(savedQr);
@@ -108,7 +105,6 @@ public class QrController {
             Qr qr = qrRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("QR not found"));
 
-            // Debug log in backend
             System.out.println("QR found: " + id + ", isActive=" + qr.isActive());
 
             Map<String, Object> response = new HashMap<>();
@@ -191,8 +187,8 @@ public class QrController {
             Qr qr = new Qr();
             qr.setId(newId);
             qr.setActive(false);
-            qr.setPassword(""); // Empty password until registered
-            qr.setCreatedDate(new Date()); // Add creation date when generating QR
+            qr.setPassword(""); 
+            qr.setCreatedDate(new Date()); 
 
             qrRepository.save(qr);
             generatedIds.add(newId);
