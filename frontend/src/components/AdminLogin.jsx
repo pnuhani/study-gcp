@@ -31,7 +31,7 @@ export default function AdminLogin() {
   const onSubmit = async (data) => {
     setServerError("");
     try {
-      const result = await api.adminLogin(data.username, data.password);
+      const result = await api.adminLogin(data.username.trim(), data.password.trim());
       if (result.success) {
         localStorage.setItem("adminToken", result.token);
         navigate("/admin");
