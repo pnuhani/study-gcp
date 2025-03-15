@@ -5,6 +5,8 @@ import DownloadIcon from "@mui/icons-material/Download"
 import RefreshIcon from "@mui/icons-material/Refresh"
 import NavigateNextIcon from "@mui/icons-material/NavigateNext"
 import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore"
+import DarkModeIcon from "@mui/icons-material/DarkMode"
+import LightModeIcon from "@mui/icons-material/LightMode"
 import api from "../api/api"
 
 export default function AdminDashboard() {
@@ -14,6 +16,10 @@ export default function AdminDashboard() {
   const [batchSize, setBatchSize] = useState(10)
   const [error, setError] = useState("")
   const [generating, setGenerating] = useState(false)
+  const [darkMode, setDarkMode] = useState(() => {
+    // Initialize from localStorage if available
+    return localStorage.getItem("darkMode") === "true"
+  })
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0)
@@ -25,21 +31,44 @@ export default function AdminDashboard() {
   
   const navigate = useNavigate()
 
+
+  const sortByActiveStatus = (qrCodes) => {
+    return [...qrCodes].sort((a, b) => {
+      const aIsActive = Boolean(a.isActive);
+      const bIsActive = Boolean(b.isActive);
+      return aIsActive === bIsActive ? 0 : aIsActive ? -1 : 1;
+    });
+  };
+
   useEffect(() => {
-    // Initial load - fetch first 3 pages
+    // fetch first 3 pages
     fetchInitialPages()
   }, [] )
+
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark')
+    } else {
+      document.body.classList.remove('dark')
+    }
+    localStorage.setItem("darkMode", darkMode)
+  }, [darkMode])
+
+  const toggleDarkMode = () => {
+    setDarkMode(prev => !prev)
+  }
 
   const fetchInitialPages = async () => {
     setLoading(true)
     try {
-      // Create an array of promises to fetch first 3 pages
       const pagePromises = [0, 1, 2].map(page => api.getQRBatch(page, pageSize))
       const results = await Promise.all(pagePromises)
+      console.log("Initial pages loaded:", results);
+      
       
 
       const firstPageData = results[0]
-      setQrCodes(firstPageData.qrCodes || [])
+      setQrCodes(sortByActiveStatus( firstPageData.qrCodes || []))
       setTotalItems(firstPageData.totalItems || 0)
       setTotalPages(firstPageData.totalPages || 1)
       
@@ -47,7 +76,7 @@ export default function AdminDashboard() {
       const newLoadedPages = {}
       results.forEach((result, index) => {
         if (result && result.qrCodes) {
-          newLoadedPages[index] = result.qrCodes
+          newLoadedPages[index] = sortByActiveStatus(result.qrCodes)
         }
       })
       setLoadedPages(newLoadedPages)
@@ -74,12 +103,15 @@ export default function AdminDashboard() {
       const result = await api.getQRBatch(page, pageSize)
       if (result && result.qrCodes) {
 
-        setQrCodes(result.qrCodes)
+        const sortedCodes = sortByActiveStatus(result.qrCodes)
+
+        setQrCodes(sortedCodes)
         
         
         setLoadedPages(prev => ({
           ...prev,
-          [page]: result.qrCodes
+          [page]: sortedCodes
+
         }))
         
 
@@ -167,35 +199,44 @@ export default function AdminDashboard() {
   const endItem = Math.min((currentPage + 1) * pageSize, totalItems)
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-100'} transition-colors duration-200`}>
     
-      <header className="bg-white shadow-sm border-b">
+      <header className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} shadow-sm border-b transition-colors duration-200`}>
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 flex items-center">
-            <QrCodeIcon className="mr-2 text-[#3a5a78]" />
+          <h1 className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'} flex items-center transition-colors duration-200`}>
+            <QrCodeIcon className={`mr-2 ${darkMode ? 'text-blue-400' : 'text-[#3a5a78]'}`} />
             <span>QR Code Management</span>
           </h1>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700 transition-colors flex items-center gap-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7z"
-                clipRule="evenodd"
-              />
-              <path d="M4 8a1 1 0 011-1h5a1 1 0 110 2H5a1 1 0 01-1-1z" />
-            </svg>
-            Logout
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={toggleDarkMode}
+              className={`p-2 rounded-full ${darkMode ? 'bg-gray-700 text-yellow-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'} transition-colors`}
+              aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+            </button>
+            <button
+              onClick={handleLogout}
+              className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'} rounded-md transition-colors flex items-center gap-2`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7z"
+                  clipRule="evenodd"
+                />
+                <path d="M4 8a1 1 0 011-1h5a1 1 0 110 2H5a1 1 0 01-1-1z" />
+              </svg>
+              Logout
+            </button>
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid gap-6">
           
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-md flex items-center">
+            <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-md flex items-center dark:bg-red-900/30 dark:text-red-400 dark:border-red-500">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5 mr-2 text-red-500"
@@ -212,13 +253,13 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <div className={`${darkMode ? 'bg-gray-800 text-white' : 'bg-white'} shadow rounded-lg p-6 mb-6 transition-colors duration-200`}>
             <h2 className="text-lg font-medium mb-4 flex items-center">
               Generate New QR Codes
             </h2>
             <div className="flex flex-wrap gap-4 items-end">
               <div>
-                <label htmlFor="batchSize" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="batchSize" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors duration-200`}>
                   Batch Size
                 </label>
                 <input
@@ -228,13 +269,13 @@ export default function AdminDashboard() {
                   max="100"
                   value={batchSize}
                   onChange={(e) => setBatchSize(Number.parseInt(e.target.value) || 1)}
-                  className="block w-24 rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-[#3a5a78] focus:border-[#3a5a78] shadow-sm"
+                  className={`block w-24 rounded-md border ${darkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500' : 'border-gray-300 focus:ring-[#3a5a78] focus:border-[#3a5a78]'} px-3 py-2 focus:outline-none shadow-sm transition-colors duration-200`}
                 />
               </div>
               <button
                 onClick={handleGenerateBatch}
                 disabled={generating}
-                className="px-4 py-2 bg-[#3a5a78] text-white rounded-md hover:bg-[#2d4860] focus:outline-none focus:ring-2 focus:ring-[#3a5a78] focus:ring-offset-2 disabled:opacity-50 transition-colors flex items-center"
+                className={`px-4 py-2 ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#3a5a78] hover:bg-[#2d4860]'} text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${darkMode ? 'focus:ring-blue-500 focus:ring-offset-gray-900' : 'focus:ring-[#3a5a78]'} disabled:opacity-50 transition-colors flex items-center`}
               >
                 {generating ? (
                   <>
@@ -262,26 +303,26 @@ export default function AdminDashboard() {
               <button
                 onClick={handleDownloadPDF}
                 disabled={selectedIds.length === 0}
-                className="px-4 py-2 bg-[#3a5a78] text-white rounded-md hover:bg-[#2d4860] focus:outline-none focus:ring-2 focus:ring-[#3a5a78] focus:ring-offset-2 disabled:opacity-50 transition-colors flex items-center"
+                className={`px-4 py-2 ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#3a5a78] hover:bg-[#2d4860]'} text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${darkMode ? 'focus:ring-blue-500 focus:ring-offset-gray-900' : 'focus:ring-[#3a5a78]'} disabled:opacity-50 transition-colors flex items-center`}
               >
                 <DownloadIcon className="mr-1" /> Download Selected
               </button>
               <button
                 onClick={fetchQRCodes}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                className={`p-2 rounded-full ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition-colors`}
                 title="Refresh list"
               >
-                <RefreshIcon className="text-[#3a5a78]" />
+                <RefreshIcon className={darkMode ? 'text-blue-400' : 'text-[#3a5a78]'} />
               </button>
             </div>
           </div>
 
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-medium flex items-center">
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} shadow rounded-lg overflow-hidden transition-colors duration-200`}>
+            <div className={`px-6 py-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex justify-between items-center transition-colors duration-200`}>
+              <h2 className={`text-lg font-medium flex items-center ${darkMode ? 'text-white' : ''}`}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 mr-2 text-[#3a5a78]"
+                  className={`h-5 w-5 mr-2 ${darkMode ? 'text-blue-400' : 'text-[#3a5a78]'}`}
                   viewBox="0 0 20 20"
                   fill="currentColor"
                 >
@@ -289,81 +330,83 @@ export default function AdminDashboard() {
                 </svg>
                 QR Code Inventory
               </h2>
-              <div className="text-sm text-gray-500">
+              <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                 {totalItems > 0 ? `Showing ${startItem}-${endItem} of ${totalItems} QR codes • ` : ''}
                 {selectedIds.length} selected
               </div>
             </div>
             {loading ? (
               <div className="p-12 flex flex-col items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#3a5a78] mb-4"></div>
-                <p className="text-gray-500">Loading QR codes...</p>
+                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${darkMode ? 'border-blue-400' : 'border-[#3a5a78]'} mb-4`}></div>
+                <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>Loading QR codes...</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className={`min-w-full divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                  <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-50'}>
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
                         <div className="flex items-center">
                           <input
                             type="checkbox"
                             checked={selectedIds.length === qrCodes.length && qrCodes.length > 0}
                             onChange={toggleSelectAll}
-                            className="h-4 w-4 text-[#3a5a78] focus:ring-[#3a5a78] border-gray-300 rounded"
+                            className={`h-4 w-4 ${darkMode ? 'text-blue-600 focus:ring-blue-500 border-gray-600' : 'text-[#3a5a78] focus:ring-[#3a5a78] border-gray-300'} rounded`}
                           />
                           <span className="ml-2">Select</span>
                         </div>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
                         QR ID
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
                         Created Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
                         Activation Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className={`${darkMode ? 'bg-gray-800 divide-y divide-gray-700' : 'bg-white divide-y divide-gray-200'}`}>
                     {qrCodes.length > 0 ? (
                       qrCodes.map((qr) => (
-                        <tr key={qr.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={qr.id} className={`${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors`}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
                               type="checkbox"
                               id={`qr-${qr.id}`}
                               checked={selectedIds.includes(qr.id)}
                               onChange={() => handleCheckboxChange(qr.id)}
-                              className="h-4 w-4 text-[#3a5a78] focus:ring-[#3a5a78] border-gray-300 rounded"
+                              className={`h-4 w-4 ${darkMode ? 'text-blue-600 focus:ring-blue-500 border-gray-600' : 'text-[#3a5a78] focus:ring-[#3a5a78] border-gray-300'} rounded`}
                             />
                             <label htmlFor={`qr-${qr.id}`} className="sr-only">
                               Select QR code {qr.id}
                             </label>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{qr.id}</td>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{qr.id}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                qr.active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                                qr.isActive 
+                                  ? darkMode ? "bg-green-900 text-green-300" : "bg-green-100 text-green-800" 
+                                  : darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-800"
                               }`}
                             >
-                              {qr.active ? "Active" : "Inactive"}
+                              {qr.isActive ? "Active" : "Inactive"}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
                             {qr.createdDate && qr.createdDate !== "null"
                               ? new Date(qr.createdDate).toLocaleDateString()
                               : "Not recorded"}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
                             {qr.activationDate && qr.activationDate !== "null"
                               ? new Date(qr.activationDate).toLocaleDateString()
                               : "-"}
@@ -372,14 +415,14 @@ export default function AdminDashboard() {
                             <div className="flex space-x-2">
                               <button
                                 onClick={() => navigate(`/qr/${qr.id}`)}
-                                className="text-[#3a5a78] hover:text-[#2d4860] px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                                className={`${darkMode ? 'text-blue-400 hover:text-blue-300 hover:bg-gray-700' : 'text-[#3a5a78] hover:text-[#2d4860] hover:bg-blue-50'} px-2 py-1 rounded transition-colors`}
                               >
                                 View
                               </button>
-                              {(qr.isActive || qr.active) && (
+                              {(qr.isActive) && (
                                 <button
                                   onClick={() => navigate(`/qr/${qr.id}/edit`)}
-                                  className="text-[#3a5a78] hover:text-[#2d4860] px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                                  className={`${darkMode ? 'text-blue-400 hover:text-blue-300 hover:bg-gray-700' : 'text-[#3a5a78] hover:text-[#2d4860] hover:bg-blue-50'} px-2 py-1 rounded transition-colors`}
                                 >
                                   Edit
                                 </button>
@@ -390,9 +433,9 @@ export default function AdminDashboard() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="6" className="px-6 py-12 text-center text-sm text-gray-500">
+                        <td colSpan="6" className={`px-6 py-12 text-center text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           <div className="flex flex-col items-center">
-                            <QrCodeIcon className="h-12 w-12 text-gray-300 mb-2" />
+                            <QrCodeIcon className={`h-12 w-12 ${darkMode ? 'text-gray-600' : 'text-gray-300'} mb-2`} />
                             <p>No QR codes found. Generate some using the form above.</p>
                           </div>
                         </td>
@@ -403,26 +446,27 @@ export default function AdminDashboard() {
                 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200">
+                  
+                  <div className={`px-6 py-4 flex items-center justify-between border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                     <div className="flex-1 flex justify-between sm:hidden">
                       <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 0}
-                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                        className={`relative inline-flex items-center px-4 py-2 border ${darkMode ? 'border-gray-600 text-gray-300 bg-gray-800 hover:bg-gray-700' : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'} text-sm font-medium rounded-md disabled:opacity-50`}
                       >
                         Previous
                       </button>
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages - 1}
-                        className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                        className={`ml-3 relative inline-flex items-center px-4 py-2 border ${darkMode ? 'border-gray-600 text-gray-300 bg-gray-800 hover:bg-gray-700' : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'} text-sm font-medium rounded-md disabled:opacity-50`}
                       >
                         Next
                       </button>
                     </div>
                     <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-sm text-gray-700">
+                        <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                           Showing <span className="font-medium">{startItem}</span> to{" "}
                           <span className="font-medium">{endItem}</span> of{" "}
                           <span className="font-medium">{totalItems}</span> results
@@ -433,7 +477,7 @@ export default function AdminDashboard() {
                           <button
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 0}
-                            className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                            className={`relative inline-flex items-center px-2 py-2 rounded-l-md border ${darkMode ? 'border-gray-600 bg-gray-800 text-gray-400 hover:bg-gray-700' : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'} text-sm font-medium disabled:opacity-50`}
                           >
                             <span className="sr-only">Previous</span>
                             <NavigateBeforeIcon />
@@ -459,8 +503,12 @@ export default function AdminDashboard() {
                                 onClick={() => handlePageChange(pageNum)}
                                 className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                                   currentPage === pageNum
-                                    ? "z-10 bg-[#3a5a78] text-white border-[#3a5a78]"
-                                    : "bg-white text-gray-500 hover:bg-gray-50 border-gray-300"
+                                    ? darkMode 
+                                      ? "z-10 bg-blue-600 text-white border-blue-600" 
+                                      : "z-10 bg-[#3a5a78] text-white border-[#3a5a78]"
+                                    : darkMode
+                                      ? "bg-gray-800 text-gray-300 hover:bg-gray-700 border-gray-600"
+                                      : "bg-white text-gray-500 hover:bg-gray-50 border-gray-300"
                                 }`}
                               >
                                 {pageNum + 1}
@@ -471,7 +519,7 @@ export default function AdminDashboard() {
                           <button
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages - 1}
-                            className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                            className={`relative inline-flex items-center px-2 py-2 rounded-r-md border ${darkMode ? 'border-gray-600 bg-gray-800 text-gray-400 hover:bg-gray-700' : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'} text-sm font-medium disabled:opacity-50`}
                           >
                             <span className="sr-only">Next</span>
                             <NavigateNextIcon />
@@ -480,8 +528,8 @@ export default function AdminDashboard() {
                           {/* Loading indicator for next page */}
                           {loadingPage !== null && (
                             <div className="ml-2 flex items-center">
-                              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#3a5a78]"></div>
-                              <span className="ml-1 text-sm text-gray-500">Loading page {loadingPage + 1}...</span>
+                              <div className={`animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 ${darkMode ? 'border-blue-400' : 'border-[#3a5a78]'}`}></div>
+                              <span className={`ml-1 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading page {loadingPage + 1}...</span>
                             </div>
                           )}
                         </nav>
@@ -489,8 +537,8 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
+                </div>
+              )}
           </div>
         </div>
       </main>

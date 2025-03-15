@@ -31,7 +31,7 @@ export default function QREdit() {
   });
 
   const handleUpdateSuccess = () => {
-    navigate(`/qr/${id}`); // 
+    navigate(`/qr/${id}`); 
   };
 
   const onSubmit = async (data) => {

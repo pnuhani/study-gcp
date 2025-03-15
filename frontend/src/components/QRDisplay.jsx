@@ -25,11 +25,7 @@ function QRDisplay() {
         
         
         if (result) {
-          const isQrActive = 
-            result.isActive === true || 
-            result.active === true || 
-            result.isActive === 'true' || 
-            result.active === 'true';
+          const isQrActive = result.isActive === true 
           
           if (!isQrActive) {
             
