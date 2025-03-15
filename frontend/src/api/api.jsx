@@ -47,18 +47,17 @@ export const api = {
       console.log("Raw QR API response:", response); 
       
       if (response) {
-        if (response.active !== undefined && response.isActive === undefined) {
-          response.isActive = response.active;
-        }
-        
+        // Normal property normalization
         if (response.isActive === 'true') response.isActive = true;
         if (response.isActive === 'false') response.isActive = false;
+        
+        return response;
       }
-      
-      return response;
+      return null; // Return null for non-existent QRs
     } catch (error) {
       console.error('Error getting QR info:', error);
-      return { isActive: false };
+      // Return an object that indicates the QR doesn't exist
+      return { notFound: true, error: error.message };
     }
   },
 

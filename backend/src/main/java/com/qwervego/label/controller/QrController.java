@@ -102,9 +102,14 @@ public class QrController {
     @GetMapping
     public ResponseEntity<?> getQRInfo(@RequestParam String id) {
         try {
-            Qr qr = qrRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("QR not found"));
+            Optional<Qr> qrOpt = qrRepository.findById(id);
 
+            if (qrOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("notFound", true, "error", "QR code not found"));
+            }
+
+            Qr qr = qrOpt.get();
             System.out.println("QR found: " + id + ", isActive=" + qr.isActive());
 
             Map<String, Object> response = new HashMap<>();
@@ -117,11 +122,10 @@ public class QrController {
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", e.getMessage()));
         }
     }
-
 
     @GetMapping("/all")
     public ResponseEntity<Map<String, Object>> getAllQRs(

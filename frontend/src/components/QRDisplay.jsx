@@ -25,6 +25,13 @@ function QRDisplay() {
         
         
         if (result) {
+
+          if (result.notFound) {
+            setError("Invalid QR code. This QR code does not exist in our system.");
+            return;
+          }
+
+
           const isQrActive = result.isActive === true 
           
           if (!isQrActive) {
@@ -57,16 +64,14 @@ function QRDisplay() {
     )
   }
 
-  if (error) {
-    return (
-      <div className="text-red-600 text-center py-8 px-4">
-        <p className="text-lg font-medium">{error}</p>
-        <button className="mt-2 text-blue-600 hover:underline" onClick={() => navigate(`/qr/${id}/register`)}>
-          Register this QR code
-        </button>
-      </div>
-    )
-  }
+if (error) {
+  // No registration button for completely invalid QR codes
+  return (
+    <div className="text-red-600 text-center py-8 px-4">
+      <p className="text-lg font-medium">{error}</p>
+    </div>
+  )
+}
 
   if (!data) {
     return (
