@@ -1,6 +1,4 @@
-# Study GCP
 
-Study GCP is a full-stack application built with a Spring Boot backend and a React (Vite) frontend. It is designed to manage QR codes in a variety of contexts including registration, editing, and admin management. Users can scan a QR code to view details or register their information, while administrators have a secure dashboard to manage and generate QR codes in batches.
 
 ## Features
 
@@ -127,9 +125,3 @@ study-gcp/
 │   └── ...
 └── README.md           # This file
 ```
-
-## Contact and Support
-
-For issues or feature requests, please open an issue in the repository.
-
-Happy coding!
