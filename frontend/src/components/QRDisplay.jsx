@@ -1,107 +1,164 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import PropTypes from 'prop-types';
-import PersonIcon from '@mui/icons-material/Person';
-import EmailIcon from '@mui/icons-material/Email';
-import HomeIcon from '@mui/icons-material/Home';
-import PhoneIcon from '@mui/icons-material/Phone';
-import EditIcon from '@mui/icons-material/Edit';
-import Layout from './Layout';
-import { api } from '../api/api';
+"use client"
+
+import { useEffect, useState } from "react"
+import { useParams, useNavigate } from "react-router-dom"
+import {
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  Edit as EditIcon,
+  LocationOn as LocationIcon,
+} from "@mui/icons-material"
+import api from "../api/api"
 
 function QRDisplay() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await api.getQRInfo(id);
-        if (!result || !result.isActive) {
-          navigate(`/qr/${id}/register`);
-          return;
+        const result = await api.getQRInfo(id)
+        console.log("QR Data received:", result);
+        
+        
+        if (result) {
+
+          if (result.notFound) {
+            setError("Invalid QR code. This QR code does not exist in our system.");
+            return;
+          }
+
+
+          const isQrActive = result.isActive === true 
+          
+          if (!isQrActive) {
+            
+            console.log("QR not active, redirecting to register page");
+            navigate(`/qr/${id}/register`)
+            return
+          }
+          
+          setData(result)
+        } else {
+          
+          setError("Invalid QR code. This QR code does not exist in our system.")
         }
-        setData(result);
       } catch (error) {
-        console.error('Error:', error);
-        setError('QR code not found');
+        console.error("Error:", error)
+        setError("QR code not found or is invalid")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
-    fetchData();
-  }, [id, navigate]);
+    }
+    fetchData()
+  }, [id, navigate])
 
-  if (loading) return <div className="text-center py-8">Loading...</div>;
-  if (error) return <div className="text-red-600 text-center py-8">{error}</div>;
-  if (!data) return <div className="text-center py-8">No data found. <a href={`/qr/${id}/register`} className="text-blue-600 hover:underline">Register this QR code</a></div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="animate-spin h-8 w-8 border-4 border-gray-300 border-t-red-500 rounded-full"></div>
+      </div>
+    )
+  }
 
-
-  const safeData = {
-    name: data.name || 'Not provided',
-    email: data.email || 'Not provided',
-    address: data.address || 'Not provided',
-    phoneNumber: data.phoneNumber || 'Not provided'
-  };
-
+if (error) {
   return (
-    <Layout title="QR Code Information">
-      <div className="space-y-6">
-        <div className="flex justify-center text-center">
-          <div className="bg-blue-50 border-l-4 border-red-500 p-4 mb-6 rounded">
-          <p className="text-blue-900 leading-relaxed">
-            This medical device is very important to me.<br />
-            It helps manage my health condition.<br />
-            If you&apos;ve found it, I would greatly appreciate if you could contact me using the information below.<br />
-            Thank you for your help!
-          </p>
-          </div>
-        </div>
-        
-        <InfoField icon={<PersonIcon />} label="Name" value={safeData.name} />
-        <InfoField icon={<EmailIcon />} label="Email" value={safeData.email} />
-        <InfoField icon={<HomeIcon />} label="Address" value={safeData.address} />
-        <InfoField icon={<PhoneIcon />} label="Phone Number" value={safeData.phoneNumber} />
-        
-        <button
-          onClick={() => navigate(`/qr/${id}/edit`)}
-          className="w-full mt-6 bg-[#3a5a78] hover:bg-[#2d4860] text-white py-3 px-6 rounded-md text-lg flex items-center justify-center gap-2 transition-colors duration-200"
-        >
-          <EditIcon className="w-5 h-5" />
-          Edit Information
+    <div className="text-red-600 text-center py-8 px-4">
+      <p className="text-lg font-medium">{error}</p>
+    </div>
+  )
+}
+
+  if (!data) {
+    return (
+      <div className="text-center py-8 px-4">
+        <p className="text-lg">No data found.</p>
+        <button className="mt-2 text-blue-600 hover:underline" onClick={() => navigate(`/qr/${id}/register`)}>
+          Register this QR code
         </button>
       </div>
-    </Layout>
-  );
-}
+    )
+  }
 
-function InfoField({ icon, label, value }) {
+  const safeData = {
+    name: data.name || "Not provided",
+    email: data.email || "Not provided",
+    address: data.address || "Not provided",
+    phoneNumber: data.phoneNumber || "Not provided",
+  }
+
   return (
-    <div className="flex items-center gap-4 p-3 bg-[#f0f4f8] rounded-md">
-      <div className="text-[#3a5a78]">
-        {icon}
-      </div>
-      <div>
-        <p className="text-base text-[#5a6a7a]">
-          {label}
-        </p>
-        <p className="text-lg text-[#2c3e50] font-medium">
-          {value}
-        </p>
+    <div className="container max-w-md mx-auto px-4 py-8">
+      <div className="bg-white rounded-lg overflow-hidden shadow-lg border border-gray-200">
+        {/* Header */}
+        <div className="bg-gray-100 h-16 pb-6 relative">
+          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
+            <div className="bg-white p-1 rounded-full shadow-md">
+              <div className="bg-gray-100 rounded-full p-2">
+                <LocationIcon className="h-6 w-6 text-red-500" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="pt-8 pb-4 px-6">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-semibold text-red-500 mb-2">{safeData.name}</h2>
+            <p className="text-gray-600 text-sm">{safeData.address}</p>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <p className="text-gray-700 leading-relaxed text-center">
+              Hello friend! <br/>Thank you for finding my medical device.
+              <br />
+              This item is very important to me.
+              <br />
+              If you find it, please contact me and let me take it home!
+
+            </p>
+          </div>
+
+          <h3 className="text-red-500 font-medium mb-3">Emergency contact information</h3>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="bg-gray-100 p-2 rounded-full">
+                <PhoneIcon className="h-5 w-5 text-red-500" />
+              </div>
+              <a href={`tel:${safeData.phoneNumber}`} className="text-gray-700">
+                {safeData.phoneNumber}
+              </a>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="bg-gray-100 p-2 rounded-full">
+                <EmailIcon className="h-5 w-5 text-red-500" />
+              </div>
+              <a href={`mailto:${safeData.email}`} className="text-gray-700">
+                {safeData.email}
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-50 px-6 py-4">
+          <button
+            onClick={() => navigate(`/qr/${id}/edit`)}
+            className="w-full bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-md text-lg flex items-center justify-center gap-2 transition-colors duration-200"
+          >
+            <EditIcon className="w-5 h-5" />
+            Edit Information
+          </button>
+        </div>
       </div>
     </div>
-  );
+  )
 }
 
+export default QRDisplay
 
-InfoField.propTypes = {
-  icon: PropTypes.node.isRequired,
-  label: PropTypes.string.isRequired,
-  value: PropTypes.string.isRequired
-}
-
-
-export default QRDisplay;
