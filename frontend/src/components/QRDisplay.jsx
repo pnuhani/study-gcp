@@ -8,7 +8,7 @@ import {
   Edit as EditIcon,
   LocationOn as LocationIcon,
 } from "@mui/icons-material"
-import { api } from "../api/api"
+import api from "../api/api"
 
 function QRDisplay() {
   const { id } = useParams()
@@ -65,7 +65,6 @@ function QRDisplay() {
   }
 
 if (error) {
-  // No registration button for completely invalid QR codes
   return (
     <div className="text-red-600 text-center py-8 px-4">
       <p className="text-lg font-medium">{error}</p>

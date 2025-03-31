@@ -5,6 +5,7 @@ import QRForm from './components/QRForm';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
 import ProtectedRoute from './components/ProtectedRoute';
+import ForgetPassword from './components/ForgetPassword';
 
 function App() {
   return (
@@ -13,6 +14,8 @@ function App() {
         {/* Customer-facing routes */}
         <Route path="/qr/:id" element={<QRDisplay />} />
         <Route path="/qr/:id/edit" element={<QREdit />} />
+        <Route path="/forgot-password/:id" element={<ForgetPassword />} />
+        <Route path="/register/:id" element={<QRForm />} />
         <Route path="/qr/:id/register" element={<QRForm />} />
         
         {/* Admin routes */}

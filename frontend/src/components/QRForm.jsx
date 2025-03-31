@@ -31,6 +31,12 @@ const schema = z
 export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
   const { id } = useParams()
   const [serverError, setServerError] = useState("")
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpVerified, setOtpVerified] = useState(false)
+  const [email, setEmail] = useState("")
+  const [otp, setOtp] = useState("")
+  const [verifyingOtp, setVerifyingOtp] = useState(false)
+  const [sendingOtp, setSendingOtp] = useState(false)
   const navigate = useNavigate()
 
   const {
@@ -47,6 +53,44 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
     },
   })
 
+  const handleSendOtp = async () => {
+    setSendingOtp(true)
+    setServerError("")
+    try {
+      const result = await api.generateOtp(email)
+      if (result.success) {
+        setOtpSent(true)
+        setServerError(result.message)
+      } else {
+        setServerError(result.message || "Failed to send OTP")
+      }
+    } catch (error) {
+      console.error("Error sending OTP:", error)
+      setServerError("Failed to send OTP. Please try again.")
+    } finally {
+      setSendingOtp(false)
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    setVerifyingOtp(true)
+    setServerError("")
+    try {
+      const result = await api.verifyOtp(otp)
+      if (result.valid) {
+        setOtpVerified(true)
+        setServerError(result.message)
+      } else {
+        setServerError(result.message || "Invalid OTP")
+      }
+    } catch (error) {
+      console.error("Error verifying OTP:", error)
+      setServerError("Failed to verify OTP. Please try again.")
+    } finally {
+      setVerifyingOtp(false)
+    }
+  }
+
   const onSubmit = async (data) => {
     try {
       if (isEdit) {
@@ -57,6 +101,11 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
           navigate(`/qr/${id}`)
         }
       } else {
+        if (!otpVerified) {
+          setServerError("Please verify your email before submitting the form.")
+          return
+        }
+
         const qrExists = await api.checkQRExists(id)
 
         if (!qrExists.exists) {
@@ -123,12 +172,53 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
                   type="email"
                   {...register("email")}
                   placeholder="Your Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className={`w-full pl-14 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 ${
                     errors.email ? "border-red-500" : "border-gray-300"
                   }`}
+                  disabled={otpVerified}
                 />
                 {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>}
               </div>
+
+              {!otpSent && !isEdit && (
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={sendingOtp || otpVerified}
+                  className="w-full bg-blue-500 text-white py-3 px-6 rounded-md text-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  {sendingOtp ? "Sending OTP..." : "Send OTP"}
+                </button>
+              )}
+
+              {otpSent && !otpVerified && !isEdit && (
+                <>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <div className="bg-gray-100 p-2 rounded-full">
+                        <LockIcon className="h-5 w-5 text-red-500" />
+                      </div>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Enter OTP"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      className={`w-full pl-14 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 border-gray-300`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleVerifyOtp}
+                    disabled={verifyingOtp}
+                    className="w-full bg-green-500 text-white py-3 px-6 rounded-md text-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  >
+                    {verifyingOtp ? "Verifying OTP..." : "Verify OTP"}
+                  </button>
+                </>
+              )}
 
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -165,7 +255,7 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
               </div>
 
               {/* Conditionally render password fields */}
-              {!isEdit && (
+              {!isEdit && otpVerified && (
                 <>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -207,7 +297,7 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (!isEdit && !otpVerified)}
                 className="w-full bg-red-500 text-white py-3 px-6 rounded-md text-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
               >
                 {isSubmitting ? (

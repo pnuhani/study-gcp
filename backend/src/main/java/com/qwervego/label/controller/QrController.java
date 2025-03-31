@@ -22,6 +22,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,7 +36,12 @@ import com.qwervego.label.dto.ErrorResponse;
 import com.qwervego.label.dto.QrResponse;
 import com.qwervego.label.model.Qr;
 import com.qwervego.label.repository.QrRepository;
+import com.qwervego.label.service.EmailService;
+import com.qwervego.label.service.OtpService;
 import com.qwervego.label.service.QrService;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/api/qr")
@@ -44,17 +50,22 @@ public class QrController {
     private static final Logger logger = LoggerFactory.getLogger(QrController.class);
     private final QrService qrService;
     private final QrRepository qrRepository;
-
+    private final OtpService otpService;
+    private final EmailService emailService;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     @Autowired
-    public QrController(QrService qrService, com.qwervego.label.repository.QrRepository qrRepository, QrRepository qrRepository1) {
+    public QrController(QrService qrService, QrRepository qrRepository, OtpService otpService,
+            EmailService emailService, BCryptPasswordEncoder passwordEncoder) {
         this.qrService = qrService;
-        this.qrRepository = qrRepository1;
+        this.qrRepository = qrRepository;
+        this.otpService = otpService;
+        this.emailService = emailService;
+        this.passwordEncoder = passwordEncoder;
     }
 
-
     @PostMapping("/add")
-    public ResponseEntity<Object> addDetails(@Valid @RequestBody Qr qr, BindingResult result) {
+    public ResponseEntity<Object> addDetails(@Valid @RequestBody Qr qr, BindingResult result, HttpSession session) {
         Optional<Qr> existingQrOpt = qrRepository.findById(qr.getId());
         boolean isNewQr = existingQrOpt.isEmpty();
 
@@ -63,6 +74,16 @@ public class QrController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new ErrorResponse("Password is required for new QR codes."));
             }
+
+            // Verify email using OTP
+            String sessionId = session.getId();
+            String email = qr.getEmail();
+            String storedEmail = otpService.getEmail(sessionId);
+            if (storedEmail == null || !storedEmail.equals(email)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ErrorResponse("Email verification failed. Please verify your email first."));
+            }
+            otpService.invalidateOtp(sessionId);
         }
 
         ErrorResponse validationError = qrService.validateQrData(qr, result);
@@ -98,6 +119,41 @@ public class QrController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponse("An error occurred while saving QR data."));
+        }
+    }
+
+    @PostMapping("/generate-otp")
+    public ResponseEntity<Map<String, Object>> generateOtp(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+        String email = request.get("email");
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Email is required."));
+        }
+
+        String sessionId = httpRequest.getSession().getId();
+        String otp = otpService.createOtpSession(email, sessionId);
+        emailService.sendOtp(email, otp);
+
+        return ResponseEntity.ok(Map.of(
+        "success", true,
+        "message", "OTP sent to your email.",
+        "sessionId", sessionId
+));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<Map<String, Object>> verifyOtp(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+        String otp = request.get("otp");
+        String sessionId = httpRequest.getSession().getId();
+
+        if (otp == null || otp.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "OTP is required."));
+        }
+
+        boolean isValid = otpService.validateOtp(sessionId, otp);
+        if (isValid) {
+            return ResponseEntity.ok(Map.of("valid", true, "message", "OTP is valid."));
+        } else {
+            return ResponseEntity.ok(Map.of("valid", false, "message", "OTP is invalid."));
         }
     }
 
@@ -198,8 +254,8 @@ public class QrController {
             Qr qr = new Qr();
             qr.setId(newId);
             qr.setActive(false);
-            qr.setPassword(""); 
-            qr.setCreatedDate(new Date()); 
+            qr.setPassword("");
+            qr.setCreatedDate(new Date());
 
             qrRepository.save(qr);
             generatedIds.add(newId);
@@ -211,7 +267,6 @@ public class QrController {
 
         return ResponseEntity.ok(response);
     }
-
 
     @PostMapping("/batch")
     public ResponseEntity<List<QrResponse>> getQrBatch(@RequestBody Map<String, List<String>> request) {
@@ -230,8 +285,7 @@ public class QrController {
                         qr.getAddress(),
                         qr.getPhoneNumber(),
                         qr.getCreatedDate(),
-                        qr.getActivationDate()
-                ))
+                        qr.getActivationDate()))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(responseList);
@@ -248,5 +302,70 @@ public class QrController {
         }
 
         return sb.toString();
+    }
+
+//    @PostMapping("/forgot-password/generate-otp")
+//    public ResponseEntity<Map<String, Object>> forgotPasswordGenerateOtp(@RequestBody Map<String, String> request,
+//            HttpSession session) {
+//        String email = request.get("email");
+//        if (email == null || email.trim().isEmpty()) {
+//            return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Email is required"));
+//        }
+//
+//        // Check if the email exists in the QR database
+//        Optional<Qr> qrOpt = qrRepository.findByPhoneNumber(email);
+//        if (qrOpt.isEmpty()) {
+//            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//                    .body(Collections.singletonMap("error", "Email not found in our system"));
+//        }
+//
+//        String sessionId = session.getId();
+//        String otp = otpService.createOtpSession(email, sessionId);
+//        emailService.sendOtp(email, otp);
+//
+//        Map<String, Object> response = new HashMap<>();
+//        response.put("success", true);
+//        response.put("message", "OTP sent to " + email);
+//        response.put("sessionId", sessionId);  // Add this line
+//        return ResponseEntity.ok(response);
+//    }
+
+//@PostMapping("/forgot-password/verify-otp")
+//public ResponseEntity<Map<String, Object>> verifyOtp(@RequestBody Map<String, String> request) {
+//    String sessionId = request.get("sessionId");
+//    String otp = request.get("otp");
+//    boolean valid = otpService.validateOtp(sessionId, otp);
+//    return ResponseEntity.ok(Map.of("valid", valid));
+//}
+
+
+    @PostMapping("/reset")
+    public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+        String email = request.get("id"); // We're receiving email in the 'id' field
+        String newPassword = request.get("newPassword");
+
+        if (email == null || email.trim().isEmpty() || newPassword == null || newPassword.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Email and new password are required."));
+        }
+
+        // Find QR by email instead of ID
+        Optional<Qr> qrOpt = qrRepository.findByEmail(email);
+        if (qrOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", "User not found."));
+        }
+
+        Qr qr = qrOpt.get();
+        String sessionId = httpRequest.getSession().getId();
+        String storedEmail = otpService.getEmail(sessionId);
+
+        if (storedEmail == null || !storedEmail.equals(email)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "message", "Email verification failed."));
+        }
+
+        qr.setPassword(passwordEncoder.encode(newPassword));
+        qrRepository.save(qr);
+
+        otpService.invalidateOtp(sessionId);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Password reset successfully."));
     }
 }

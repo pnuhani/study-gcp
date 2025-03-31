@@ -29,6 +29,9 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok:1.18.30'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+	// https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail
+	implementation("org.springframework.boot:spring-boot-starter-mail:3.4.4")
+
 }
 
 tasks.named('test') {

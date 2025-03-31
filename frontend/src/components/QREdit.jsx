@@ -7,6 +7,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import Layout from './layout';
 import QRForm from './QRForm';
 import api from '../api/api';
+import { Link } from 'react-router-dom'; // Import Link
 
 const verificationSchema = z.object({
   password: z.string().min(1, 'Password is required'),
@@ -84,6 +85,13 @@ export default function QREdit() {
                   {serverError && (
                     <p className="mt-2 text-red-600 text-sm">{serverError}</p>
                   )}
+                </div>
+
+                {/* Forgot Password Link */}
+                <div className="text-center">
+                  <Link to={`/forgot-password/${id}`} className="text-blue-500 hover:underline">
+                    Forgot Password?
+                  </Link>
                 </div>
 
                 <button
