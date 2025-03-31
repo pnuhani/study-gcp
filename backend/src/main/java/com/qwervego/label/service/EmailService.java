@@ -19,8 +19,8 @@ public class EmailService {
     public void sendOtp(String to, String otp) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
-        message.setSubject("Password Reset Code");
-        message.setText("Your password reset code is: " + otp + "\n\n" +
+        message.setSubject("Verification Code");
+        message.setText("Your verification code is: " + otp + "\n\n" +
                 "This code will expire in 10 minutes.\n\n" +
                 "If you didn't request this, please ignore this email.");
 
