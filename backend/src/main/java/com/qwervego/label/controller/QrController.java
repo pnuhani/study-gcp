@@ -125,8 +125,35 @@ public class QrController {
     @PostMapping("/generate-otp")
     public ResponseEntity<Map<String, Object>> generateOtp(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
         String email = request.get("email");
+        boolean isPasswordReset = Boolean.parseBoolean(request.get("isPasswordReset"));
+        String qrId = request.get("qrId");
+        
         if (email == null || email.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Email is required."));
+        }
+
+        // For password reset, verify email exists and matches the QR ID
+        if (isPasswordReset) {
+            if (qrId == null || qrId.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "QR ID is required for password reset."));
+            }
+
+            Optional<Qr> qr = qrRepository.findById(qrId);
+            if (qr.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", "Invalid QR code."));
+            }
+            
+            // Verify that the email matches the QR code
+            if (!qr.get().getEmail().equals(email)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("success", false, "message", "Email does not match the QR code."));
+            }
+        }
+        // For registration, check if email already exists
+        else if (qrRepository.findByEmail(email).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("success", false, "message", "Email already exists."));
         }
 
         String sessionId = httpRequest.getSession().getId();
@@ -134,10 +161,10 @@ public class QrController {
         emailService.sendOtp(email, otp);
 
         return ResponseEntity.ok(Map.of(
-        "success", true,
-        "message", "OTP sent to your email.",
-        "sessionId", sessionId
-));
+            "success", true,
+            "message", "OTP sent to your email.",
+            "sessionId", sessionId
+        ));
     }
 
     @PostMapping("/verify-otp")
@@ -304,57 +331,28 @@ public class QrController {
         return sb.toString();
     }
 
-//    @PostMapping("/forgot-password/generate-otp")
-//    public ResponseEntity<Map<String, Object>> forgotPasswordGenerateOtp(@RequestBody Map<String, String> request,
-//            HttpSession session) {
-//        String email = request.get("email");
-//        if (email == null || email.trim().isEmpty()) {
-//            return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Email is required"));
-//        }
-//
-//        // Check if the email exists in the QR database
-//        Optional<Qr> qrOpt = qrRepository.findByPhoneNumber(email);
-//        if (qrOpt.isEmpty()) {
-//            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-//                    .body(Collections.singletonMap("error", "Email not found in our system"));
-//        }
-//
-//        String sessionId = session.getId();
-//        String otp = otpService.createOtpSession(email, sessionId);
-//        emailService.sendOtp(email, otp);
-//
-//        Map<String, Object> response = new HashMap<>();
-//        response.put("success", true);
-//        response.put("message", "OTP sent to " + email);
-//        response.put("sessionId", sessionId);  // Add this line
-//        return ResponseEntity.ok(response);
-//    }
-
-//@PostMapping("/forgot-password/verify-otp")
-//public ResponseEntity<Map<String, Object>> verifyOtp(@RequestBody Map<String, String> request) {
-//    String sessionId = request.get("sessionId");
-//    String otp = request.get("otp");
-//    boolean valid = otpService.validateOtp(sessionId, otp);
-//    return ResponseEntity.ok(Map.of("valid", valid));
-//}
-
-
     @PostMapping("/reset")
     public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
-        String email = request.get("id"); // We're receiving email in the 'id' field
+        String email = request.get("email");
+        String qrId = request.get("qrId");
         String newPassword = request.get("newPassword");
 
-        if (email == null || email.trim().isEmpty() || newPassword == null || newPassword.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Email and new password are required."));
+        if (email == null || email.trim().isEmpty() || newPassword == null || newPassword.trim().isEmpty() || qrId == null || qrId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Email, QR ID and new password are required."));
         }
 
-        // Find QR by email instead of ID
-        Optional<Qr> qrOpt = qrRepository.findByEmail(email);
+        // Find QR by ID first
+        Optional<Qr> qrOpt = qrRepository.findById(qrId);
         if (qrOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", "User not found."));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", "QR code not found."));
         }
 
+        // Verify email matches the QR code
         Qr qr = qrOpt.get();
+        if (!qr.getEmail().equals(email)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "message", "Email does not match the QR code."));
+        }
+
         String sessionId = httpRequest.getSession().getId();
         String storedEmail = otpService.getEmail(sessionId);
 

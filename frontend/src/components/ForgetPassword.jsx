@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import Layout from "./layout"
 import api from "../api/api"
 import LockIcon from "@mui/icons-material/Lock"
 
 export default function ForgotPassword() {
+  const { id } = useParams(); // Get the QR ID from URL
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -13,45 +14,56 @@ export default function ForgotPassword() {
   const [otpVerified, setOtpVerified] = useState(false)
   const [serverError, setServerError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [sessionId, setSessionId] = useState("");
+  const [sendingOtp, setSendingOtp] = useState(false)  // New state for sending OTP
+  const [verifyingOtp, setVerifyingOtp] = useState(false)  // New state for verifying OTP
+  const [resettingPassword, setResettingPassword] = useState(false)  // New state for password reset
   const navigate = useNavigate()
+
+  const resetState = () => {
+    setOtpSent(false);
+    setOtpVerified(false);
+    setSendingOtp(false);
+    setVerifyingOtp(false);
+    setResettingPassword(false);
+    setOtp("");
+    sessionStorage.removeItem('sessionId');
+    sessionStorage.removeItem('resetEmail');
+  };
 
   useEffect(() => {
     // Clear any existing session storage when component mounts
-    sessionStorage.removeItem('resetEmail');
+    resetState();
   }, []);
 
-  const handleSendOtp = async () => {
-    setLoading(true);
-    setServerError('');
+  const handleGenerateOtp = async () => {
+    setSendingOtp(true);
+    setServerError("");
     try {
-      const result = await api.generateOtp(email);
+      const result = await api.generateOtp(email, true, id); // Added id parameter
       if (result.success) {
         setOtpSent(true);
-        setSuccessMessage('OTP sent to your email');
-        // Store sessionId from the response
-        setSessionId(result.sessionId);
-        sessionStorage.setItem('resetEmail', email);
         sessionStorage.setItem('sessionId', result.sessionId);
+        sessionStorage.setItem('resetEmail', email);
+        setServerError(result.message);
       } else {
-        setServerError(result.message || 'Failed to send OTP');
+        setServerError(result.message || "Failed to send OTP");
       }
     } catch (error) {
-      setServerError(error.message || 'Failed to send OTP');
+      console.error("Error sending OTP:", error);
+      setServerError("Failed to send OTP. Please try again.");
     } finally {
-      setLoading(false);
+      setSendingOtp(false);
     }
   };
 
   const handleVerifyOtp = async () => {
-    setLoading(true);
+    setVerifyingOtp(true);
     setServerError("");
     try {
       const storedSessionId = sessionStorage.getItem('sessionId');
       if (!storedSessionId) {
         setServerError('Session expired. Please try again.');
-        setOtpSent(false);
+        resetState();
         return;
       }
       const result = await api.verifyOtp(otp, storedSessionId);
@@ -65,7 +77,7 @@ export default function ForgotPassword() {
       console.error("Error verifying OTP:", error);
       setServerError("Failed to verify OTP. Please try again.");
     } finally {
-      setLoading(false);
+      setVerifyingOtp(false);
     }
   };
 
@@ -80,28 +92,28 @@ export default function ForgotPassword() {
       return;
     }
 
-    setLoading(true);
+    setResettingPassword(true);
     setServerError('');
     const storedEmail = sessionStorage.getItem('resetEmail');
     if (!storedEmail) {
       setServerError('Session expired. Please try again.');
-      setOtpSent(false);
-      setOtpVerified(false);
+      resetState();
       return;
     }
     try {
-      const result = await api.resetPassword(storedEmail, newPassword);
+      const result = await api.resetPassword(storedEmail, newPassword, id);
       if (result.success) {
         setSuccessMessage('Password reset successfully');
-        sessionStorage.removeItem('resetEmail');
-        setTimeout(() => navigate('/login'), 2000);
+        resetState();
+        // Navigate back to the edit page with the QR ID
+        setTimeout(() => navigate(`/qr/${id}/edit`), 2000);
       } else {
         setServerError(result.message || 'Failed to reset password');
       }
     } catch (error) {
       setServerError(error.message || 'Failed to reset password');
     } finally {
-      setLoading(false);
+      setResettingPassword(false);
     }
   };
 
@@ -145,11 +157,11 @@ export default function ForgotPassword() {
                   />
                 </div>
                 <button
-                  onClick={handleSendOtp}
-                  disabled={loading}
+                  onClick={handleGenerateOtp}
+                  disabled={sendingOtp}
                   className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mt-4"
                 >
-                  {loading ? "Sending..." : "Send OTP"}
+                  {sendingOtp ? "Sending..." : "Send OTP"}
                 </button>
               </div>
             )}
@@ -170,13 +182,25 @@ export default function ForgotPassword() {
                     onChange={(e) => setOtp(e.target.value)}
                   />
                 </div>
-                <button
-                  onClick={handleVerifyOtp}
-                  disabled={loading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mt-4"
-                >
-                  {loading ? "Verifying..." : "Verify OTP"}
-                </button>
+                <div className="flex justify-between items-center mt-4">
+                  <button
+                    onClick={handleVerifyOtp}
+                    disabled={verifyingOtp}
+                    className="flex-1 mr-2 justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    {verifyingOtp ? "Verifying..." : "Verify OTP"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      resetState();
+                      handleGenerateOtp();
+                    }}
+                    disabled={sendingOtp}
+                    className="flex-1 ml-2 justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Resend OTP
+                  </button>
+                </div>
               </div>
             )}
 
@@ -218,10 +242,10 @@ export default function ForgotPassword() {
 
                 <button
                   onClick={handleResetPassword}
-                  disabled={loading}
+                  disabled={resettingPassword}
                   className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
-                  {loading ? "Resetting..." : "Reset Password"}
+                  {resettingPassword ? "Resetting..." : "Reset Password"}
                 </button>
               </div>
             )}

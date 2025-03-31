@@ -257,14 +257,18 @@ const api = {
         }
     },
 
-    generateOtp: async (email) => {
+    generateOtp: async (email, isPasswordReset = false, qrId = null) => {
         try {
             const response = await fetch(`${BASE_URL}/qr/generate-otp`, {
                 ...defaultOptions,
                 method: "POST",
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email, isPasswordReset, qrId }),
             });
-            return await response.json();
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || "Failed to generate OTP");
+            }
+            return data;
         } catch (error) {
             console.error("Error generating OTP:", error);
             throw error;
@@ -278,21 +282,26 @@ const api = {
                 method: "POST",
                 body: JSON.stringify({ otp, sessionId }),
             });
-            return await response.json();
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || "Failed to verify OTP");
+            }
+            return data;
         } catch (error) {
             console.error("Error verifying OTP:", error);
             throw error;
         }
     },
 
-    resetPassword: async (email, newPassword) => {
+    resetPassword: async (email, newPassword, qrId) => {
         try {
             const response = await fetch(`${BASE_URL}/qr/reset`, {  
                 ...defaultOptions,
                 method: "POST",
                 body: JSON.stringify({ 
-                    email: email,  
-                    newPassword 
+                    email,
+                    newPassword,
+                    qrId
                 }),
             });
             if (!response.ok) {

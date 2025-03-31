@@ -53,24 +53,24 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
     },
   })
 
-  const handleSendOtp = async () => {
-    setSendingOtp(true)
-    setServerError("")
+  const handleGenerateOtp = async () => {
+    setSendingOtp(true);
+    setServerError("");
     try {
-      const result = await api.generateOtp(email)
+      const result = await api.generateOtp(email, false); // false for registration
       if (result.success) {
-        setOtpSent(true)
-        setServerError(result.message)
+        setOtpSent(true);
+        setServerError(result.message);
       } else {
-        setServerError(result.message || "Failed to send OTP")
+        setServerError(result.message || "Failed to send OTP");
       }
     } catch (error) {
-      console.error("Error sending OTP:", error)
-      setServerError("Failed to send OTP. Please try again.")
+      console.error("Error sending OTP:", error);
+      setServerError("Failed to send OTP. Please try again.");
     } finally {
-      setSendingOtp(false)
+      setSendingOtp(false);
     }
-  }
+  };
 
   const handleVerifyOtp = async () => {
     setVerifyingOtp(true)
@@ -185,7 +185,7 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
               {!otpSent && !isEdit && (
                 <button
                   type="button"
-                  onClick={handleSendOtp}
+                  onClick={handleGenerateOtp}
                   disabled={sendingOtp || otpVerified}
                   className="w-full bg-blue-500 text-white py-3 px-6 rounded-md text-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                 >
