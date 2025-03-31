@@ -85,18 +85,6 @@ public class QrService {
         }
         Qr existingQr = existingQrOpt.get();
 
-
-        if (!updates.containsKey("password")) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorResponse("Password is required for update."));
-        }
-
-        String providedPassword = updates.get("password").toString();
-        if (!checkPassword(providedPassword, existingQr.getPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ErrorResponse("Invalid password. Update not allowed."));
-        }
-
         applyUpdates(existingQr, updates);
 
         Qr updatedQr = saveQrData(existingQr);

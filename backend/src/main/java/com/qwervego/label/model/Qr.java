@@ -1,13 +1,15 @@
 package com.qwervego.label.model;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import java.util.Date;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
-import java.util.Date;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
@@ -31,7 +33,6 @@ public class Qr {
     @NotBlank(message = "Phone Number is required")
     private String phoneNumber;
 
-    @NotBlank(message = "Password is required")
     @Size(min = 4, message = "Password must be at least 8 characters")
     private String password;
 

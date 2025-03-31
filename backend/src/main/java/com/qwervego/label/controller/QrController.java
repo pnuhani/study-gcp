@@ -55,12 +55,21 @@ public class QrController {
 
     @PostMapping("/add")
     public ResponseEntity<Object> addDetails(@Valid @RequestBody Qr qr, BindingResult result) {
+        Optional<Qr> existingQrOpt = qrRepository.findById(qr.getId());
+        boolean isNewQr = existingQrOpt.isEmpty();
+
+        if (isNewQr) {
+            if (qr.getPassword() == null || qr.getPassword().trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ErrorResponse("Password is required for new QR codes."));
+            }
+        }
+
         ErrorResponse validationError = qrService.validateQrData(qr, result);
         if (validationError != null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(validationError);
         }
 
-        Optional<Qr> existingQrOpt = qrRepository.findById(qr.getId());
         if (existingQrOpt.isPresent()) {
             Qr existingQr = existingQrOpt.get();
 
@@ -96,8 +105,6 @@ public class QrController {
     public ResponseEntity<Object> updateQR(@RequestBody Map<String, Object> updates) {
         return qrService.processQrUpdate(updates);
     }
-
-
 
     @GetMapping
     public ResponseEntity<?> getQRInfo(@RequestParam String id) {

@@ -9,7 +9,7 @@ import PersonIcon from "@mui/icons-material/Person"
 import EmailIcon from "@mui/icons-material/Email"
 import HomeIcon from "@mui/icons-material/Home"
 import PhoneIcon from "@mui/icons-material/Phone"
-import LockIcon from "@mui/icons-material/Lock"
+import LockIcon from "@mui/icons-material/Lock" // Import LockIcon
 import Layout from "./layout"
 import api from "../api/api"
 import { useNavigate, useParams } from "react-router-dom"
@@ -20,8 +20,8 @@ const schema = z
     email: z.string().email("Invalid email address"),
     address: z.string().min(1, "Address is required"),
     phoneNumber: z.string().min(1, "Phone number is required"),
-    password: z.string().min(6, "Password must be at least 6 characters").max(50, "Password is too long"),
-    confirmPassword: z.string(),
+    password: z.string().min(6, "Password must be at least 6 characters").max(50, "Password is too long").optional(),
+    confirmPassword: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -58,17 +58,17 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
         }
       } else {
         const qrExists = await api.checkQRExists(id)
-        
+
         if (!qrExists.exists) {
           setServerError("Invalid QR code. This QR code does not exist in our system.")
           return
         }
-        
+
         if (qrExists.isActive) {
           setServerError("This QR code is already registered.")
           return
         }
-        
+
         const result = await api.submitQRForm(id, data)
         navigate(`/qr/${id}`)
       }
@@ -164,41 +164,46 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
                 {errors.phoneNumber && <p className="mt-2 text-sm text-red-600">{errors.phoneNumber.message}</p>}
               </div>
 
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <div className="bg-gray-100 p-2 rounded-full">
-                    <LockIcon className="h-5 w-5 text-red-500" />
+              {/* Conditionally render password fields */}
+              {!isEdit && (
+                <>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <div className="bg-gray-100 p-2 rounded-full">
+                        <LockIcon className="h-5 w-5 text-red-500" />
+                      </div>
+                    </div>
+                    <input
+                      type="password"
+                      {...register("password")}
+                      placeholder="Set Password"
+                      className={`w-full pl-14 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 ${
+                        errors.password ? "border-red-500" : "border-gray-300"
+                      }`}
+                    />
+                    {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>}
                   </div>
-                </div>
-                <input
-                  type="password"
-                  {...register("password")}
-                  placeholder="Set Password"
-                  className={`w-full pl-14 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 ${
-                    errors.password ? "border-red-500" : "border-gray-300"
-                  }`}
-                />
-                {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>}
-              </div>
 
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <div className="bg-gray-100 p-2 rounded-full">
-                    <LockIcon className="h-5 w-5 text-red-500" />
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <div className="bg-gray-100 p-2 rounded-full">
+                        <LockIcon className="h-5 w-5 text-red-500" />
+                      </div>
+                    </div>
+                    <input
+                      type="password"
+                      {...register("confirmPassword")}
+                      placeholder="Confirm Password"
+                      className={`w-full pl-14 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 ${
+                        errors.confirmPassword ? "border-red-500" : "border-gray-300"
+                      }`}
+                    />
+                    {errors.confirmPassword && (
+                      <p className="mt-2 text-sm text-red-600">{errors.confirmPassword.message}</p>
+                    )}
                   </div>
-                </div>
-                <input
-                  type="password"
-                  {...register("confirmPassword")}
-                  placeholder="Confirm Password"
-                  className={`w-full pl-14 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 ${
-                    errors.confirmPassword ? "border-red-500" : "border-gray-300"
-                  }`}
-                />
-                {errors.confirmPassword && (
-                  <p className="mt-2 text-sm text-red-600">{errors.confirmPassword.message}</p>
-                )}
-              </div>
+                </>
+              )}
 
               <button
                 type="submit"
@@ -246,5 +251,5 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
 QRForm.propTypes = {
   isEdit: PropTypes.bool,
   defaultValues: PropTypes.object,
-  onUpdateSuccess: PropTypes.func // Add this to PropTypes
+  onUpdateSuccess: PropTypes.func,
 }
