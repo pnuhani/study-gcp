@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +15,26 @@ const loginSchema = z.object({
 export default function AdminLogin() {
   const navigate = useNavigate();
   const [serverError, setServerError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem("adminToken");
+      if (token) {
+        try {
+          const result = await api.verifyAdminToken();
+          if (result.valid) {
+            navigate("/admin-dashboard", { replace: true });
+          }
+        } catch (err) {
+          localStorage.removeItem("adminToken");
+        }
+      }
+      setLoading(false);
+    };
+    
+    checkAuth();
+  }, [navigate]);
 
   const {
     register,
@@ -34,7 +54,7 @@ export default function AdminLogin() {
       const result = await api.adminLogin(data.username.trim(), data.password.trim());
       if (result.success) {
         localStorage.setItem("adminToken", result.token);
-        navigate("/admin");
+        navigate("/admin-dashboard", { replace: true });
       } else {
         setServerError(result.message || "Invalid login credentials");
       }
@@ -43,6 +63,14 @@ export default function AdminLogin() {
       setServerError("An error occurred. Please try again.");
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#3a5a78]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">

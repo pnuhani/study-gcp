@@ -1,21 +1,17 @@
-import { AppBar, Toolbar, Typography, Container, Box } from '@mui/material';
-import { QrCode as QrCodeIcon } from '@mui/icons-material';
+import { Outlet } from 'react-router-dom';
 import PropTypes from 'prop-types';
 
-
-
-export default function Layout({ children }) {
+export default function Layout() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <main className="flex-1 flex items-center justify-center">
-        <div className="w-full">{children}</div>
+        <div className="w-full">
+          <Outlet />
+        </div>
       </main>
     </div>
-  )
-}
+  );
 
-Layout.propTypes = {
-  children: PropTypes.node.isRequired,
-};
+}
 
 

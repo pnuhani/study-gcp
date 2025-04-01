@@ -54,7 +54,7 @@ export default function QREdit() {
 
   if (!verified) {
     return (
-      <Layout>
+      
         <div className="container max-w-md mx-auto px-4 py-8">
           <div className="bg-white rounded-lg overflow-hidden shadow-lg border border-gray-200">
             <div className="p-6">
@@ -115,7 +115,7 @@ export default function QREdit() {
             </div>
           </div>
         </div>
-      </Layout>
+
     );
   }
 
