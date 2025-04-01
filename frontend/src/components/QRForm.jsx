@@ -128,7 +128,6 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
   }
 
   return (
-    <Layout>
       <div className="container max-w-md mx-auto px-4 py-8">
         <div className="bg-white rounded-lg overflow-hidden shadow-lg border border-gray-200">
           <div className="bg-gray-100 p-6">
@@ -334,7 +333,6 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
           </div>
         </div>
       </div>
-    </Layout>
   )
 }
 
