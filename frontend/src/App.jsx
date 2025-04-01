@@ -7,6 +7,8 @@ import AdminLogin from './components/AdminLogin';
 import ForgetPassword from './components/ForgetPassword';
 import AuthLayout from './layouts/AuthLayout';
 import Layout from './components/layout';
+import LandingPage from './components/LandingPage';
+
 
 const router = createBrowserRouter([
   {
@@ -15,7 +17,7 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <QRDisplay />
+        element: <LandingPage />
       },
       {
         path: "qr/:id",
