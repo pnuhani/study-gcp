@@ -205,7 +205,7 @@ export default function AdminDashboard() {
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'} flex items-center transition-colors duration-200`}>
             <QrCodeIcon className={`mr-2 ${darkMode ? 'text-blue-400' : 'text-[#3a5a78]'}`} />
-            <span>QR Code Management</span>
+            <span>QwerVego Admin Dashboard</span>
           </h1>
           <div className="flex items-center gap-4">
             <button

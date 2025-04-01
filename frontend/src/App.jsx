@@ -32,10 +32,6 @@ const router = createBrowserRouter([
         element: <ForgetPassword />
       },
       {
-        path: "register/:id",
-        element: <QRForm />
-      },
-      {
         path: "qr/:id/register",
         element: <QRForm />
       },

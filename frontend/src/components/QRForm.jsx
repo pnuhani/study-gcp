@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -28,16 +28,17 @@ const schema = z
     path: ["confirmPassword"],
   })
 
-export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
+export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess }) {
   const { id } = useParams()
-  const [serverError, setServerError] = useState("")
+  const navigate = useNavigate()
+  const [serverError, setServerError] = useState('')
+  const [loading, setLoading] = useState(true)
   const [otpSent, setOtpSent] = useState(false)
+  const [sendingOtp, setSendingOtp] = useState(false)
   const [otpVerified, setOtpVerified] = useState(false)
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
   const [verifyingOtp, setVerifyingOtp] = useState(false)
-  const [sendingOtp, setSendingOtp] = useState(false)
-  const navigate = useNavigate()
 
   const {
     register,
@@ -52,6 +53,29 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
       phoneNumber: "",
     },
   })
+
+  useEffect(() => {
+    const checkQRExists = async () => {
+      try {
+        const qrExists = await api.checkQRExists(id)
+        if (!qrExists.exists) {
+          alert("This QR code does not exist in our system")
+          navigate('/', { replace: true })
+          return
+        }
+        if (qrExists.isActive && !isEdit) {
+          navigate(`/qr/${id}`, { replace: true })
+          return
+        }
+        setLoading(false)
+      } catch (error) {
+        alert("Error checking QR code. Please try again.")
+        navigate('/', { replace: true })
+      }
+    }
+
+    checkQRExists()
+  }, [id, navigate, isEdit])
 
   const handleGenerateOtp = async () => {
     setSendingOtp(true);
@@ -125,6 +149,15 @@ export default function QRForm({ isEdit, defaultValues, onUpdateSuccess }) {
       console.error("Error:", error)
       setServerError("An error occurred. Please try again.")
     }
+  }
+
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500"></div>
+      </div>
+    )
   }
 
   return (
