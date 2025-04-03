@@ -1,32 +1,37 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import api from '../api/api';
 
 export default function AuthLayout() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { authState, setAuthState } = useAuth();
+  const [loading, setLoading] = useState(!authState.initialized);
 
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-    
-    if (!token) {
-      setLoading(false);
+    if (authState.initialized) {
       return;
     }
-    
-    const verifyToken = async () => {
+
+    const verifyAuth = async () => {
       try {
         const result = await api.verifyAdminToken();
-        setIsAuthenticated(result.valid);
-      } catch (err) {
-        console.error("Error verifying token:", err);
-        localStorage.removeItem("adminToken");
+        setAuthState({
+          isAuthenticated: result.valid,
+          role: result.role,
+          initialized: true
+        });
+      } catch (error) {
+        setAuthState({
+          isAuthenticated: false,
+          role: null,
+          initialized: true
+        });
       } finally {
         setLoading(false);
       }
     };
     
-    verifyToken();
+    verifyAuth();
   }, []);
 
   if (loading) {
@@ -37,9 +42,11 @@ export default function AuthLayout() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!authState.isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
   }
 
   return <Outlet />;
 }
+
+

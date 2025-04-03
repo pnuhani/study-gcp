@@ -1,19 +1,25 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import QRDisplay from './components/QRDisplay';
 import QREdit from './components/QREdit';
 import QRForm from './components/QRForm';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
 import ForgetPassword from './components/ForgetPassword';
+import SuperadminAuthLayout from './layouts/SuperadminAuthLayout';
 import AuthLayout from './layouts/AuthLayout';
 import Layout from './components/layout';
 import LandingPage from './components/LandingPage';
-
+import SuperadminDashboard from './components/SuperadminDashboard';
+import AdminList from './components/AdminList';
+import AdminCreate from './components/AdminCreate';
+import { ThemeProvider } from './context/ThemeContext';
+import ThemeWrapper from './components/ThemeWrapper';
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Layout />,
+    element: <ThemeWrapper><Layout /></ThemeWrapper>,
     children: [
       {
         index: true,
@@ -39,7 +45,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/admin-dashboard",
-    element: <AuthLayout />,
+    element: <ThemeWrapper><AuthLayout /></ThemeWrapper>,
     children: [
       {
         index: true,
@@ -48,20 +54,50 @@ const router = createBrowserRouter([
     ]
   },
   {
+    path: "/superadmin-dashboard",
+    element: <ThemeWrapper><SuperadminAuthLayout /></ThemeWrapper>,
+    children: [
+      {
+        index: true,
+        element: <SuperadminDashboard />
+      },
+      {
+        path: "admins",
+        element: <AdminList />
+      },
+      {
+        path: "admins/create",
+        element: <AdminCreate />
+      },
+      {
+        path: "admin-dashboard",
+        element: <AdminDashboard />
+      }
+    ]
+  },
+  {
     path: "/admin/login",
-    element: <AdminLogin />
+    element: <ThemeWrapper><AdminLogin /></ThemeWrapper>
   },
   {
     path: "*",
-    element: (
+    element: <ThemeWrapper>
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-[#3a5a78] mb-4">404</h1>
           <p className="text-gray-600">Page not found</p>
         </div>
       </div>
-    )
+    </ThemeWrapper>
   }
 ]);
 
-export default router;
+function App() {
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
+}
+
+export default App;

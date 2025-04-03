@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,20 +168,22 @@ public class QrController {
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<Map<String, Object>> verifyOtp(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+    public ResponseEntity<Map<String, Object>> verifyOtp(@RequestBody Map<String, String> request) {
         String otp = request.get("otp");
-        String sessionId = httpRequest.getSession().getId();
-
-        if (otp == null || otp.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "OTP is required."));
-        }
-
+        String sessionId = request.get("sessionId"); // Get from request body instead of HttpSession
+        
         boolean isValid = otpService.validateOtp(sessionId, otp);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("valid", isValid);
+        
         if (isValid) {
-            return ResponseEntity.ok(Map.of("valid", true, "message", "OTP is valid."));
+            response.put("message", "OTP verified successfully");
         } else {
-            return ResponseEntity.ok(Map.of("valid", false, "message", "OTP is invalid."));
+            response.put("message", "Invalid OTP or OTP expired");
         }
+        
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/update")
@@ -336,28 +338,45 @@ public class QrController {
         String email = request.get("email");
         String qrId = request.get("qrId");
         String newPassword = request.get("newPassword");
+        // Get the sessionId from the request body, not the current HTTP session
+        String sessionId = request.get("sessionId");
 
-        if (email == null || email.trim().isEmpty() || newPassword == null || newPassword.trim().isEmpty() || qrId == null || qrId.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Email, QR ID and new password are required."));
+        if (email == null || email.trim().isEmpty() || newPassword == null || newPassword.trim().isEmpty() 
+                || qrId == null || qrId.trim().isEmpty() || sessionId == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false, 
+                "message", "Email, QR ID, sessionId and new password are required."
+            ));
         }
 
         // Find QR by ID first
         Optional<Qr> qrOpt = qrRepository.findById(qrId);
         if (qrOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", "QR code not found."));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "success", false, 
+                "message", "QR code not found."
+            ));
         }
 
         // Verify email matches the QR code
         Qr qr = qrOpt.get();
         if (!qr.getEmail().equals(email)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "message", "Email does not match the QR code."));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "success", false, 
+                "message", "Email does not match the QR code."
+            ));
         }
 
-        String sessionId = httpRequest.getSession().getId();
+        // Get email from the OTP service using the provided sessionId
         String storedEmail = otpService.getEmail(sessionId);
+        logger.info("Password reset request - Email: {}, StoredEmail: {}, SessionID: {}", 
+                    email, storedEmail, sessionId);
 
         if (storedEmail == null || !storedEmail.equals(email)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "message", "Email verification failed."));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "success", false, 
+                "message", "Email verification failed."
+            ));
         }
 
         qr.setPassword(passwordEncoder.encode(newPassword));

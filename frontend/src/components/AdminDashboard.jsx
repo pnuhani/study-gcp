@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom"
 import QrCodeIcon from "@mui/icons-material/QrCode"
 import DownloadIcon from "@mui/icons-material/Download"
@@ -8,6 +8,7 @@ import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore"
 import DarkModeIcon from "@mui/icons-material/DarkMode"
 import LightModeIcon from "@mui/icons-material/LightMode"
 import api from "../api/api"
+import Header from "./Header";
 
 export default function AdminDashboard() {
   const [qrCodes, setQrCodes] = useState([])
@@ -189,9 +190,9 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminToken")
-    navigate("/admin/login")
+  const handleLogout = async () => {
+    await api.logout();
+    navigate("/admin/login");
   }
 
 
@@ -199,44 +200,13 @@ export default function AdminDashboard() {
   const endItem = Math.min((currentPage + 1) * pageSize, totalItems)
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-100'} transition-colors duration-200`}>
-    
-      <header className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} shadow-sm border-b transition-colors duration-200`}>
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'} flex items-center transition-colors duration-200`}>
-            <QrCodeIcon className={`mr-2 ${darkMode ? 'text-blue-400' : 'text-[#3a5a78]'}`} />
-            <span>QwerVego Admin Dashboard</span>
-          </h1>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={toggleDarkMode}
-              className={`p-2 rounded-full ${darkMode ? 'bg-gray-700 text-yellow-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'} transition-colors`}
-              aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-            </button>
-            <button
-              onClick={handleLogout}
-              className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'} rounded-md transition-colors flex items-center gap-2`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7z"
-                  clipRule="evenodd"
-                />
-                <path d="M4 8a1 1 0 011-1h5a1 1 0 110 2H5a1 1 0 01-1-1z" />
-              </svg>
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+      <Header />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid gap-6">
           
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-md flex items-center dark:bg-red-900/30 dark:text-red-400 dark:border-red-500">
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-400 rounded-md flex items-center">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5 mr-2 text-red-500"
@@ -253,13 +223,13 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          <div className={`${darkMode ? 'bg-gray-800 text-white' : 'bg-white'} shadow rounded-lg p-6 mb-6 transition-colors duration-200`}>
-            <h2 className="text-lg font-medium mb-4 flex items-center">
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+            <h2 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">
               Generate New QR Codes
             </h2>
             <div className="flex flex-wrap gap-4 items-end">
               <div>
-                <label htmlFor="batchSize" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1 transition-colors duration-200`}>
+                <label htmlFor="batchSize" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Batch Size
                 </label>
                 <input
@@ -269,36 +239,15 @@ export default function AdminDashboard() {
                   max="100"
                   value={batchSize}
                   onChange={(e) => setBatchSize(Number.parseInt(e.target.value) || 1)}
-                  className={`block w-24 rounded-md border ${darkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500' : 'border-gray-300 focus:ring-[#3a5a78] focus:border-[#3a5a78]'} px-3 py-2 focus:outline-none shadow-sm transition-colors duration-200`}
+                  className="block w-24 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 px-3 py-2"
                 />
               </div>
               <button
                 onClick={handleGenerateBatch}
                 disabled={generating}
-                className={`px-4 py-2 ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#3a5a78] hover:bg-[#2d4860]'} text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${darkMode ? 'focus:ring-blue-500 focus:ring-offset-gray-900' : 'focus:ring-[#3a5a78]'} disabled:opacity-50 transition-colors flex items-center`}
+                className="px-4 py-2 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-md disabled:opacity-50 transition-colors"
               >
-                {generating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 mr-1"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Generate QR Codes
-                  </>
-                )}
+                {generating ? "Generating..." : "Generate QR Codes"}
               </button>
               <button
                 onClick={handleDownloadPDF}
@@ -317,33 +266,19 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} shadow rounded-lg overflow-hidden transition-colors duration-200`}>
-            <div className={`px-6 py-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex justify-between items-center transition-colors duration-200`}>
-              <h2 className={`text-lg font-medium flex items-center ${darkMode ? 'text-white' : ''}`}>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className={`h-5 w-5 mr-2 ${darkMode ? 'text-blue-400' : 'text-[#3a5a78]'}`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
-                </svg>
-                QR Code Inventory
-              </h2>
-              <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                {totalItems > 0 ? `Showing ${startItem}-${endItem} of ${totalItems} QR codes • ` : ''}
-                {selectedIds.length} selected
-              </div>
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white">QR Code Inventory</h2>
             </div>
             {loading ? (
               <div className="p-12 flex flex-col items-center justify-center">
-                <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${darkMode ? 'border-blue-400' : 'border-[#3a5a78]'} mb-4`}></div>
-                <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>Loading QR codes...</p>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                <p className="mt-4 text-gray-500 dark:text-gray-400">Loading QR codes...</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className={`min-w-full divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                  <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-50'}>
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
                       <th className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
                         <div className="flex items-center">
@@ -373,7 +308,7 @@ export default function AdminDashboard() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className={`${darkMode ? 'bg-gray-800 divide-y divide-gray-700' : 'bg-white divide-y divide-gray-200'}`}>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {qrCodes.length > 0 ? (
                       qrCodes.map((qr) => (
                         <tr key={qr.id} className={`${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} transition-colors`}>
