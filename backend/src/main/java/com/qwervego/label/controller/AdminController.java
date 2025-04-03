@@ -1,107 +1,109 @@
 package com.qwervego.label.controller;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
+import com.qwervego.label.dto.AdminCreateRequest;
+import com.qwervego.label.dto.AdminResponse;
+import com.qwervego.label.model.Admin;
+import com.qwervego.label.repository.AdminRepository;
+import com.qwervego.label.service.AdminService;
+import com.qwervego.label.service.JwtService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
 
+    private final JwtService jwtService;
     private final BCryptPasswordEncoder passwordEncoder;
-
-    // In a real application, these would come from a database
-    private static final String ADMIN_USERNAME = "admin";
-    private static final String ADMIN_PASSWORD = "admin123";
-    private static final Map<String, Long> validTokens = new HashMap<>();
+    private final AdminService adminService;
+    private final AdminRepository adminRepository;
 
     @Autowired
-    public AdminController(BCryptPasswordEncoder passwordEncoder) {
+    public AdminController(JwtService jwtService, BCryptPasswordEncoder passwordEncoder, AdminService adminService, AdminRepository adminRepository) {
+        this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
+        this.adminService = adminService;
+        this.adminRepository = adminRepository;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> credentials) {
+    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> credentials, HttpServletResponse response) {
         String username = credentials.get("username");
         String password = credentials.get("password");
 
-        System.out.println("Login attempt - Username: " + username);
-
-        if (username == null || password == null) {
-            System.out.println("Missing username or password");
-            return ResponseEntity.badRequest().body(
-                    Collections.singletonMap("success", false)
-            );
+        Admin admin = adminService.findByUsername(username);
+        if (admin != null && passwordEncoder.matches(password, admin.getPassword())) {
+            String role = admin.getRole();
+            ResponseCookie jwtCookie = jwtService.generateJwtCookie(username, role);
+            
+            response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
+            
+            Map<String, Object> responseBody = new HashMap<>();
+            responseBody.put("role", role);
+            responseBody.put("success", true);
+            return ResponseEntity.ok(responseBody);
         }
 
-        
-        boolean matches = ADMIN_USERNAME.equals(username) && ADMIN_PASSWORD.equals(password);
-        System.out.println("Password: " + password);
-        System.out.println("Password matches: " + matches);
-
-        if (matches) {
-            String token = UUID.randomUUID().toString();
-            validTokens.put(token, System.currentTimeMillis() + (4 * 60 * 60 * 1000));
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("token", token);
-            return ResponseEntity.ok(response);
-        }
-
-        System.out.println("Authentication failed");
-        return ResponseEntity.status(401).body(
-                Collections.singletonMap("success", false)
-        );
+        return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials", "success", false));
     }
 
     @GetMapping("/verify")
-    public ResponseEntity<Map<String, Boolean>> verifyToken(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+    public ResponseEntity<Map<String, Object>> verify(HttpServletRequest request) {
+        String jwt = jwtService.getJwtFromRequest(request);
+        if (jwt != null && jwtService.isTokenValid(jwt)) {
+            String username = jwtService.extractUsername(jwt);
+            String role = jwtService.extractRole(jwt);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.ok(Collections.singletonMap("valid", false));
+            Map<String, Object> responseBody = new HashMap<>();
+            responseBody.put("username", username);
+            responseBody.put("role", role);
+            responseBody.put("success", true);
+            return ResponseEntity.ok(responseBody);
         }
 
-        String token = authHeader.substring(7); 
-        Long expirationTime = validTokens.get(token);
+        return ResponseEntity.status(401).body(Map.of("error", "Invalid token", "success", false));
+    }
 
-        if (expirationTime == null || expirationTime < System.currentTimeMillis()) {
-            validTokens.remove(token); 
-            return ResponseEntity.ok(Collections.singletonMap("valid", false));
-        }
+    @PostMapping("/superadmin/create")
+    public ResponseEntity<?> createAdmin(@Valid @RequestBody AdminCreateRequest request) {
+        return adminService.createAdmin(request);
+    }
 
-        return ResponseEntity.ok(Collections.singletonMap("valid", true));
+    @GetMapping("/superadmin/admins")
+    public ResponseEntity<List<AdminResponse>> getAllAdmins() {
+        return ResponseEntity.ok(adminService.getAllAdmins());
+    }
+
+    @GetMapping("/superadmin/admins/{id}")
+    public ResponseEntity<?> getAdmin(@PathVariable String id) {
+        Optional<Admin> admin = adminRepository.findById(id);
+        return admin.map(value -> ResponseEntity.ok(adminService.convertToResponse(value)))
+                   .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/superadmin/admins/{id}")
+    public ResponseEntity<?> updateAdmin(@PathVariable String id, @Valid @RequestBody AdminCreateRequest request) {
+        return adminService.updateAdmin(id, request);
+    }
+
+    @DeleteMapping("/superadmin/admins/{id}")
+    public ResponseEntity<?> deleteAdmin(@PathVariable String id) {
+        return adminService.deleteAdmin(id);
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, Boolean>> logout(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            validTokens.remove(token);
-        }
-
-        return ResponseEntity.ok(Collections.singletonMap("success", true));
-    }
-
-    @GetMapping("/test")
-    public ResponseEntity<Map<String, String>> testEndpoint() {
-        Map<String, String> response = new HashMap<>();
-        response.put("status", "success");
-        response.put("message", "Admin API is accessible");
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        ResponseCookie jwtCookie = jwtService.getCleanJwtCookie();
+        response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
+        return ResponseEntity.ok(Map.of("success", true));
     }
 }

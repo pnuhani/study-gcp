@@ -5,10 +5,11 @@ import { QRCodeSVG } from "qrcode.react";
 const BASE_URL = "http://localhost:8080/api";
 
 const defaultOptions = {
-    credentials: "include",
     headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
     },
+    credentials: 'include',
+    withCredentials: true,
 };
 
 const fetchWithErrorHandling = async (url, options = {}) => {
@@ -82,23 +83,24 @@ const api = {
 
     adminLogin: async (username, password) => {
         try {
-            console.log("Attempting login with:", username);
             const response = await fetch(`${BASE_URL}/admin/login`, {
+                ...defaultOptions,
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
                 body: JSON.stringify({ username, password }),
             });
+            
             if (!response.ok) {
-                console.error("Login failed with status:", response.status);
-                const errorData = await response.json().catch(() => ({}));
+                const errorData = await response.json();
                 return {
                     success: false,
-                    message: errorData.message || `Login failed (${response.status})`,
+                    message: errorData.error || `Login failed (${response.status})`,
                 };
             }
-            return await response.json();
+            
+            const data = await response.json();
+            // Small delay to ensure cookie is set
+            await new Promise(resolve => setTimeout(resolve, 100));
+            return data; // Return the raw response data
         } catch (error) {
             console.error("Login error:", error);
             return { success: false, message: "Login failed: " + error.message };
@@ -106,26 +108,37 @@ const api = {
     },
 
     verifyAdminToken: async () => {
-        const token = localStorage.getItem("adminToken");
-        if (!token) return { valid: false };
         try {
-            const response = await fetchWithErrorHandling(`${BASE_URL}/admin/verify`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+            const response = await fetch(`${BASE_URL}/admin/verify`, {
+                ...defaultOptions,
             });
-            return response;
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                return { valid: false, role: null };
+            }
+            return data;
         } catch (error) {
-            return { valid: false };
+            return { valid: false, role: null };
+        }
+    },
+    logout: async () => {
+        try {
+            await fetch(`${BASE_URL}/admin/logout`, {
+                ...defaultOptions,
+                method: 'POST',
+            });
+            return true;
+        } catch (error) {
+            console.error('Logout error:', error);
+            return false;
         }
     },
 
     getQRBatch: async (page = 0, pageSize = 15) => {
-        const token = localStorage.getItem("adminToken");
         return fetchWithErrorHandling(`${BASE_URL}/qr/all?page=${page}&size=${pageSize}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
+            ...defaultOptions,
         });
     },
 
@@ -263,11 +276,18 @@ const api = {
                 ...defaultOptions,
                 method: "POST",
                 body: JSON.stringify({ email, isPasswordReset, qrId }),
+                credentials: 'include'
             });
             const data = await response.json();
             if (!response.ok) {
                 throw new Error(data.message || "Failed to generate OTP");
             }
+            
+            // Store sessionId for OTP verification
+            if (data.sessionId) {
+                sessionStorage.setItem('otpSessionId', data.sessionId);
+            }
+            
             return data;
         } catch (error) {
             console.error("Error generating OTP:", error);
@@ -275,17 +295,31 @@ const api = {
         }
     },
 
-    verifyOtp: async (otp, sessionId) => {
+    verifyOtp: async (otp) => {
         try {
+            // Get the stored session ID
+            const sessionId = sessionStorage.getItem('otpSessionId');
+            console.log("Using session ID for verification:", sessionId);
+            
             const response = await fetch(`${BASE_URL}/qr/verify-otp`, {  
                 ...defaultOptions,
                 method: "POST",
-                body: JSON.stringify({ otp, sessionId }),
+                body: JSON.stringify({ 
+                    otp,
+                    sessionId
+                }),
             });
             const data = await response.json();
             if (!response.ok) {
                 throw new Error(data.message || "Failed to verify OTP");
             }
+            
+            // DON'T clear the sessionId here - need it for password reset
+            // Store verification status
+            if (data.valid) {
+                sessionStorage.setItem('otpVerified', 'true');
+            }
+            
             return data;
         } catch (error) {
             console.error("Error verifying OTP:", error);
@@ -295,27 +329,129 @@ const api = {
 
     resetPassword: async (email, newPassword, qrId) => {
         try {
+            // Get session ID and verification status
+            const sessionId = sessionStorage.getItem('otpSessionId');
+            const otpVerified = sessionStorage.getItem('otpVerified');
+            
+            console.log("Using session ID for password reset:", sessionId);
+            console.log("OTP verification status:", otpVerified);
+            
             const response = await fetch(`${BASE_URL}/qr/reset`, {  
                 ...defaultOptions,
                 method: "POST",
                 body: JSON.stringify({ 
                     email,
                     newPassword,
-                    qrId
+                    qrId,
+                    sessionId, // Include the session ID
+                    otpVerified: otpVerified === 'true' // Include verification status
                 }),
             });
+            
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({
                     message: `HTTP error: ${response.status} ${response.statusText}`,
                 }));
                 throw new Error(errorData.message || "Failed to reset password");
             }
-            return await response.json();
+            
+            const result = await response.json();
+            
+            // Now we can clear the session data
+            if (result.success) {
+                sessionStorage.removeItem('otpSessionId');
+                sessionStorage.removeItem('otpVerified');
+            }
+            
+            return result;
         } catch (error) {
             console.error("Error resetting password:", error);
             throw error;
         }
     },
+
+    // Get all admins (for superadmin)
+    getAllAdmins: async () => {
+        try {
+            const response = await fetch(`${BASE_URL}/admin/superadmin/admins`, {
+                ...defaultOptions,
+                method: 'GET'
+            });
+            if (!response.ok) throw new Error('Failed to fetch admins');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching admins:', error);
+            throw error;
+        }
+    },
+
+    // Get single admin by ID
+    getAdminById: async (id) => {
+        try {
+            const response = await fetch(`${BASE_URL}/admin/superadmin/admins/${id}`, {
+                ...defaultOptions,
+                method: 'GET'
+            });
+            if (!response.ok) throw new Error('Failed to fetch admin');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching admin:', error);
+            throw error;
+        }
+    },
+
+    // Create new admin
+    createAdmin: async (adminData) => {
+        try {
+            const response = await fetch(`${BASE_URL}/admin/superadmin/create`, {
+                ...defaultOptions,
+                method: 'POST',
+                body: JSON.stringify(adminData)
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to create admin');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error creating admin:', error);
+            throw error;
+        }
+    },
+
+    // Update admin
+    updateAdmin: async (id, adminData) => {
+        try {
+            const response = await fetch(`${BASE_URL}/admin/superadmin/admins/${id}`, {
+                ...defaultOptions,
+                method: 'PUT',
+                body: JSON.stringify(adminData)
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to update admin');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error updating admin:', error);
+            throw error;
+        }
+    },
+
+    // Delete admin
+    deleteAdmin: async (id) => {
+        try {
+            const response = await fetch(`${BASE_URL}/admin/superadmin/admins/${id}`, {
+                ...defaultOptions,
+                method: 'DELETE'
+            });
+            if (!response.ok) throw new Error('Failed to delete admin');
+            return true;
+        } catch (error) {
+            console.error('Error deleting admin:', error);
+            throw error;
+        }
+    }
 };
 
 export default api;

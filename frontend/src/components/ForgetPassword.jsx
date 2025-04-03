@@ -39,10 +39,9 @@ export default function ForgotPassword() {
     setSendingOtp(true);
     setServerError("");
     try {
-      const result = await api.generateOtp(email, true, id); // Added id parameter
+      const result = await api.generateOtp(email, true, id);
       if (result.success) {
         setOtpSent(true);
-        sessionStorage.setItem('sessionId', result.sessionId);
         sessionStorage.setItem('resetEmail', email);
         setServerError(result.message);
       } else {
@@ -60,13 +59,7 @@ export default function ForgotPassword() {
     setVerifyingOtp(true);
     setServerError("");
     try {
-      const storedSessionId = sessionStorage.getItem('sessionId');
-      if (!storedSessionId) {
-        setServerError('Session expired. Please try again.');
-        resetState();
-        return;
-      }
-      const result = await api.verifyOtp(otp, storedSessionId);
+      const result = await api.verifyOtp(otp);
       if (result.valid) {
         setOtpVerified(true);
         setServerError("OTP verified successfully");
