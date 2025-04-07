@@ -17,7 +17,10 @@ import { useNavigate, useParams } from "react-router-dom"
 const schema = z
   .object({
     name: z.string().min(1, "Name is required"),
-    email: z.string().email("Invalid email address"),
+    email: z.string()
+      .min(1, "Email is required")
+      .email("Please enter a valid email address (e.g., example@domain.com)")
+      .regex(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, "Please enter a valid email address"),
     address: z.string().min(1, "Address is required"),
     phoneNumber: z.string().min(1, "Phone number is required"),
     password: z.string().min(6, "Password must be at least 6 characters").max(50, "Password is too long").optional(),
@@ -36,13 +39,13 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
   const [otpSent, setOtpSent] = useState(false)
   const [sendingOtp, setSendingOtp] = useState(false)
   const [otpVerified, setOtpVerified] = useState(false)
-  const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
   const [verifyingOtp, setVerifyingOtp] = useState(false)
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(schema),
@@ -53,6 +56,8 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
       phoneNumber: "",
     },
   })
+
+  const email = watch("email")
 
   useEffect(() => {
     const checkQRExists = async () => {
@@ -81,7 +86,15 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
     setSendingOtp(true);
     setServerError("");
     try {
-      const result = await api.generateOtp(email, false); // false for registration
+      // Validate email before sending OTP
+      const emailValue = watch("email");
+      if (!emailValue || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(emailValue)) {
+        setServerError("Please enter a valid email address");
+        setSendingOtp(false);
+        return;
+      }
+      
+      const result = await api.generateOtp(emailValue, false); // false for registration
       if (result.success) {
         setOtpSent(true);
         setServerError(result.message);
@@ -204,8 +217,6 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
                   type="email"
                   {...register("email")}
                   placeholder="Your Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   className={`w-full pl-14 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 ${
                     errors.email ? "border-red-500" : "border-gray-300"
                   }`}
