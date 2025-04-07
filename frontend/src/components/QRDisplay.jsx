@@ -59,14 +59,14 @@ function QRDisplay() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin h-8 w-8 border-4 border-gray-300 border-t-red-500 rounded-full"></div>
+        <div className="animate-spin h-8 w-8 border-4 border-gray-300 border-t-[#3a5a78] rounded-full"></div>
       </div>
     )
   }
 
 if (error) {
   return (
-    <div className="text-red-600 text-center py-8 px-4">
+    <div className="text-[#3a5a78] text-center py-8 px-4">
       <p className="text-lg font-medium">{error}</p>
     </div>
   )
@@ -76,7 +76,7 @@ if (error) {
     return (
       <div className="text-center py-8 px-4">
         <p className="text-lg">No data found.</p>
-        <button className="mt-2 text-blue-600 hover:underline" onClick={() => navigate(`/qr/${id}/register`)}>
+        <button className="mt-2 text-[#3a5a78] hover:underline" onClick={() => navigate(`/qr/${id}/register`)}>
           Register this QR code
         </button>
       </div>
@@ -94,20 +94,24 @@ if (error) {
     <div className="container max-w-md mx-auto px-4 py-8">
       <div className="bg-white rounded-lg overflow-hidden shadow-lg border border-gray-200">
         {/* Header */}
-        <div className="bg-gray-100 h-16 pb-6 relative">
-          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-            <div className="bg-white p-1 rounded-full shadow-md">
-              <div className="bg-gray-100 rounded-full p-2">
-                <LocationIcon className="h-6 w-6 text-red-500" />
-              </div>
+        <div className="bg-gradient-to-r from-[#3a5a78] to-[#2c3e50] px-6 py-8 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="bg-white p-3 rounded-full">
+              <LocationIcon className="h-8 w-8 text-[#3a5a78]" />
             </div>
           </div>
+          <h2 className="text-2xl font-bold text-white">
+            Device Information
+          </h2>
+          <p className="mt-2 text-gray-200 text-sm">
+            Contact details for device recovery
+          </p>
         </div>
 
         {/* Content */}
         <div className="pt-8 pb-4 px-6">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-semibold text-red-500 mb-2">{safeData.name}</h2>
+            <h2 className="text-2xl font-semibold text-[#3a5a78] mb-2">{safeData.name}</h2>
             <p className="text-gray-600 text-sm">{safeData.address}</p>
           </div>
 
@@ -122,12 +126,12 @@ if (error) {
             </p>
           </div>
 
-          <h3 className="text-red-500 font-medium mb-3">Emergency contact information</h3>
+          <h3 className="text-[#3a5a78] font-medium mb-3">Emergency contact information</h3>
 
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="bg-gray-100 p-2 rounded-full">
-                <PhoneIcon className="h-5 w-5 text-red-500" />
+                <PhoneIcon className="h-5 w-5 text-[#3a5a78]" />
               </div>
               <a href={`tel:${safeData.phoneNumber}`} className="text-gray-700">
                 {safeData.phoneNumber}
@@ -136,7 +140,7 @@ if (error) {
 
             <div className="flex items-center gap-3">
               <div className="bg-gray-100 p-2 rounded-full">
-                <EmailIcon className="h-5 w-5 text-red-500" />
+                <EmailIcon className="h-5 w-5 text-[#3a5a78]" />
               </div>
               <a href={`mailto:${safeData.email}`} className="text-gray-700">
                 {safeData.email}
@@ -149,7 +153,7 @@ if (error) {
         <div className="bg-gray-50 px-6 py-4">
           <button
             onClick={() => navigate(`/qr/${id}/edit`)}
-            className="w-full bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-md text-lg flex items-center justify-center gap-2 transition-colors duration-200"
+            className="w-full bg-[#3a5a78] hover:bg-[#2c3e50] text-white py-3 px-6 rounded-md text-lg flex items-center justify-center gap-2 transition-colors duration-200"
           >
             <EditIcon className="w-5 h-5" />
             Edit Information
