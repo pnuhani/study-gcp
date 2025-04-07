@@ -15,6 +15,7 @@ import AdminList from './components/AdminList';
 import AdminCreate from './components/AdminCreate';
 import { ThemeProvider } from './context/ThemeContext';
 import ThemeWrapper from './components/ThemeWrapper';
+import RegistrationSuccess from './components/RegistrationSuccess';
 
 const router = createBrowserRouter([
   {
@@ -40,6 +41,10 @@ const router = createBrowserRouter([
       {
         path: "qr/:id/register",
         element: <QRForm />
+      },
+      {
+        path: "qr/:id/success",
+        element: <RegistrationSuccess />
       },
     ]
   },

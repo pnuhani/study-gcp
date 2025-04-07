@@ -156,7 +156,7 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
         }
 
         const result = await api.submitQRForm(id, data)
-        navigate(`/qr/${id}`)
+        navigate(`/qr/${id}/success`)
       }
     } catch (error) {
       console.error("Error:", error)
