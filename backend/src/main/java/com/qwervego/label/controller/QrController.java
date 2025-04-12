@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.qwervego.label.dto.ErrorResponse;
 import com.qwervego.label.dto.QrResponse;
 import com.qwervego.label.model.Qr;
-import com.qwervego.label.repository.QrRepository;
+import com.qwervego.label.repository.FirestoreQrRepository;
 import com.qwervego.label.service.EmailService;
 import com.qwervego.label.service.OtpService;
 import com.qwervego.label.service.QrService;
@@ -47,18 +47,19 @@ import jakarta.servlet.http.HttpSession;
 @RequestMapping("/api/qr")
 public class QrController {
 
-    private static final Logger logger = LoggerFactory.getLogger(QrController.class);
+    private final FirestoreQrRepository qrRepository;
     private final QrService qrService;
-    private final QrRepository qrRepository;
     private final OtpService otpService;
     private final EmailService emailService;
     private final BCryptPasswordEncoder passwordEncoder;
+    private static final Logger logger = LoggerFactory.getLogger(QrController.class);
 
     @Autowired
-    public QrController(QrService qrService, QrRepository qrRepository, OtpService otpService,
-            EmailService emailService, BCryptPasswordEncoder passwordEncoder) {
-        this.qrService = qrService;
+    public QrController(FirestoreQrRepository qrRepository, QrService qrService, 
+                       OtpService otpService, EmailService emailService, 
+                       BCryptPasswordEncoder passwordEncoder) {
         this.qrRepository = qrRepository;
+        this.qrService = qrService;
         this.otpService = otpService;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
@@ -75,7 +76,6 @@ public class QrController {
                         .body(new ErrorResponse("Password is required for new QR codes."));
             }
 
-            // Verify email using OTP
             String sessionId = session.getId();
             String email = qr.getEmail();
             String storedEmail = otpService.getEmail(sessionId);
@@ -114,7 +114,7 @@ public class QrController {
         qrService.hashPassword(qr);
 
         try {
-            Qr savedQr = qrService.saveQrData(qr);
+            Qr savedQr = qrRepository.save(qr);
             return ResponseEntity.ok(savedQr);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -123,11 +123,12 @@ public class QrController {
     }
 
     @PostMapping("/generate-otp")
-    public ResponseEntity<Map<String, Object>> generateOtp(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+    public ResponseEntity<Map<String, Object>> generateOtp(@RequestBody Map<String, String> request, 
+                                                         HttpServletRequest httpRequest) {
         String email = request.get("email");
-        boolean isPasswordReset = Boolean.parseBoolean(request.get("isPasswordReset"));
         String qrId = request.get("qrId");
-        
+        Boolean isPasswordReset = Boolean.valueOf(request.get("isPasswordReset"));
+
         if (email == null || email.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Email is required."));
         }
@@ -150,11 +151,8 @@ public class QrController {
                     .body(Map.of("success", false, "message", "Email does not match the QR code."));
             }
         }
-        // For registration, check if email already exists
-        else if (qrRepository.findByEmail(email).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(Map.of("success", false, "message", "Email already exists."));
-        }
+        // Remove the email existence check for registration
+        // This allows the same email to be used for multiple devices
 
         String sessionId = httpRequest.getSession().getId();
         String otp = otpService.createOtpSession(email, sessionId);
@@ -202,20 +200,21 @@ public class QrController {
             }
 
             Qr qr = qrOpt.get();
-            System.out.println("QR found: " + id + ", isActive=" + qr.isActive());
-
+            
             Map<String, Object> response = new HashMap<>();
             response.put("id", qr.getId());
+            response.put("isActive", qr.isActive());
             response.put("name", qr.getName());
             response.put("email", qr.getEmail());
             response.put("address", qr.getAddress());
             response.put("phoneNumber", qr.getPhoneNumber());
-            response.put("isActive", qr.isActive());
+            response.put("createdDate", qr.getCreatedDate());
+            response.put("activationDate", qr.getActivationDate());
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", e.getMessage()));
+                    .body(Map.of("error", "Failed to retrieve QR information"));
         }
     }
 
@@ -256,12 +255,12 @@ public class QrController {
             return ResponseEntity.badRequest().body(Collections.singletonMap("valid", false));
         }
 
-        Optional<Qr> qrOpt = qrService.findById(id);
+        Optional<Qr> qrOpt = qrRepository.findById(id);
         if (qrOpt.isEmpty()) {
             return ResponseEntity.ok(Collections.singletonMap("valid", false));
         }
 
-        boolean isValid = qrService.checkPassword(password, qrOpt.get().getPassword());
+        boolean isValid = passwordEncoder.matches(password, qrOpt.get().getPassword());
         return ResponseEntity.ok(Collections.singletonMap("valid", isValid));
     }
 
@@ -321,15 +320,12 @@ public class QrController {
     }
 
     private String generateRandomId(int length) {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        StringBuilder sb = new StringBuilder();
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         Random random = new Random();
-
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < length; i++) {
-            int index = random.nextInt(chars.length());
-            sb.append(chars.charAt(index));
+            sb.append(chars.charAt(random.nextInt(chars.length())));
         }
-
         return sb.toString();
     }
 

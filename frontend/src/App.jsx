@@ -1,4 +1,4 @@
-import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter, Outlet } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import QRDisplay from './components/QRDisplay';
 import QREdit from './components/QREdit';
@@ -6,16 +6,14 @@ import QRForm from './components/QRForm';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
 import ForgetPassword from './components/ForgetPassword';
-import SuperadminAuthLayout from './layouts/SuperadminAuthLayout';
-import AuthLayout from './layouts/AuthLayout';
 import Layout from './components/layout';
 import LandingPage from './components/LandingPage';
 import SuperadminDashboard from './components/SuperadminDashboard';
 import AdminList from './components/AdminList';
 import AdminCreate from './components/AdminCreate';
-import { ThemeProvider } from './context/ThemeContext';
 import ThemeWrapper from './components/ThemeWrapper';
 import RegistrationSuccess from './components/RegistrationSuccess';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const router = createBrowserRouter([
   {
@@ -49,18 +47,28 @@ const router = createBrowserRouter([
     ]
   },
   {
+    path: "/admin/login",
+    element: <ThemeWrapper><AdminLogin /></ThemeWrapper>
+  },
+  {
     path: "/admin-dashboard",
-    element: <ThemeWrapper><AuthLayout /></ThemeWrapper>,
-    children: [
-      {
-        index: true,
-        element: <AdminDashboard />
-      }
-    ]
+    element: (
+      <ThemeWrapper>
+        <ProtectedRoute>
+          <AdminDashboard />
+        </ProtectedRoute>
+      </ThemeWrapper>
+    )
   },
   {
     path: "/superadmin-dashboard",
-    element: <ThemeWrapper><SuperadminAuthLayout /></ThemeWrapper>,
+    element: (
+      <ThemeWrapper>
+        <ProtectedRoute requireRole="SUPERADMIN">
+          <Outlet />
+        </ProtectedRoute>
+      </ThemeWrapper>
+    ),
     children: [
       {
         index: true,
@@ -79,10 +87,6 @@ const router = createBrowserRouter([
         element: <AdminDashboard />
       }
     ]
-  },
-  {
-    path: "/admin/login",
-    element: <ThemeWrapper><AdminLogin /></ThemeWrapper>
   },
   {
     path: "*",

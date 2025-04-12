@@ -1,34 +1,31 @@
-import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
-import PropTypes from "prop-types";
-import api from "../api/api";
+import { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../config/firebase';
+import PropTypes from 'prop-types';
 
-export default function ProtectedRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+export default function ProtectedRoute({ children, requireRole }) {
   const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-    
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    
-    const verifyToken = async () => {
-      try {
-        const result = await api.verifyAdminToken();
-        setIsAuthenticated(result.valid);
-      } catch (err) {
-        console.error("Error verifying token:", err);
-        localStorage.removeItem("adminToken");
-      } finally {
-        setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const idToken = await user.getIdTokenResult();
+        const userRole = idToken.claims.role;
+        
+        // Check if user has required role (if specified)
+        setAuthorized(
+          requireRole ? userRole === requireRole : true
+        );
+      } else {
+        setAuthorized(false);
       }
-    };
-    
-    verifyToken();
-  }, []);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [requireRole]);
 
   if (loading) {
     return (
@@ -38,7 +35,7 @@ export default function ProtectedRoute({ children }) {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!authorized) {
     return <Navigate to="/admin/login" replace />;
   }
 
@@ -47,4 +44,5 @@ export default function ProtectedRoute({ children }) {
 
 ProtectedRoute.propTypes = {
   children: PropTypes.node.isRequired,
+  requireRole: PropTypes.string
 };

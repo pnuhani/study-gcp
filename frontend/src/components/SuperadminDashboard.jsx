@@ -5,11 +5,6 @@ import Header from "./Header"
 export default function SuperadminDashboard() {
   const navigate = useNavigate()
 
-  const handleLogout = async () => {
-    await api.logout()
-    navigate("/admin/login")
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <Header />
@@ -31,7 +26,7 @@ export default function SuperadminDashboard() {
                   <li>
                     <Link
                       to="/superadmin-dashboard/admins"
-                      className="block px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors"
+                      className="block px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700   text-gray-800 dark:text-gray-200 transition-colors"
                     >
                       View Admins
                     </Link>
@@ -39,7 +34,7 @@ export default function SuperadminDashboard() {
                   <li>
                     <Link
                       to="/superadmin-dashboard/admins/create"
-                      className="block px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors"
+                      className="block px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors" 
                     >
                       Create New Admin
                     </Link>

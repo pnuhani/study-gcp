@@ -1,28 +1,31 @@
 package com.qwervego.label.service;
 
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.UserRecord;
 import com.qwervego.label.dto.AdminCreateRequest;
 import com.qwervego.label.dto.AdminResponse;
 import com.qwervego.label.model.Admin;
-import com.qwervego.label.repository.AdminRepository;
+import com.qwervego.label.repository.FirestoreAdminRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class AdminService {
-    private final AdminRepository adminRepository;
-    private final BCryptPasswordEncoder passwordEncoder;
+    private final FirestoreAdminRepository adminRepository;
+    private final FirebaseAuthService firebaseAuthService;
 
     @Autowired
-    public AdminService(AdminRepository adminRepository, BCryptPasswordEncoder passwordEncoder) {
+    public AdminService(FirestoreAdminRepository adminRepository, FirebaseAuthService firebaseAuthService) {
         this.adminRepository = adminRepository;
-        this.passwordEncoder = passwordEncoder;
+        this.firebaseAuthService = firebaseAuthService;
     }
 
     public Admin findByUsername(String username) {
@@ -30,24 +33,26 @@ public class AdminService {
     }
 
     public ResponseEntity<?> createAdmin(AdminCreateRequest request) {
-        // Check if username or email already exists
-        if (adminRepository.existsByUsername(request.getUsername())) {
-            return ResponseEntity.badRequest().body("Username already exists");
-        }
-        if (adminRepository.existsByEmail(request.getEmail())) {
-            return ResponseEntity.badRequest().body("Email already exists");
-        }
+        try {
+            // First create the user in Firebase Auth
+            UserRecord userRecord = firebaseAuthService.createUser(request);
 
-        Admin admin = new Admin();
-        admin.setUsername(request.getUsername());
-        admin.setEmail(request.getEmail());
-        admin.setPassword(passwordEncoder.encode(request.getPassword()));
-        admin.setRole(request.getRole());
-        admin.setCreatedAt(new Date());
-        admin.setActive(true);
+            // Then create the admin record in Firestore
+            Admin admin = new Admin();
+            admin.setId(userRecord.getUid());
+            admin.setUsername(request.getUsername());
+            admin.setEmail(request.getEmail());
+            admin.setRole(request.getRole());
+            admin.setCreatedAt(new Date());
+            admin.setActive(true);
 
-        Admin savedAdmin = adminRepository.save(admin);
-        return ResponseEntity.ok(convertToResponse(savedAdmin));
+            Admin savedAdmin = adminRepository.save(admin);
+            return ResponseEntity.ok(convertToResponse(savedAdmin));
+        } catch (FirebaseAuthException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("message", "Failed to create admin: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
     }
 
     public List<AdminResponse> getAllAdmins() {
@@ -57,40 +62,45 @@ public class AdminService {
     }
 
     public ResponseEntity<?> updateAdmin(String id, AdminCreateRequest request) {
-        Optional<Admin> adminOpt = adminRepository.findById(id);
-        if (adminOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
+        try {
+            Optional<Admin> adminOpt = adminRepository.findById(id);
+            if (adminOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
 
-        Admin admin = adminOpt.get();
-        
-        // Check if new username/email conflicts with other admins
-        if (!admin.getUsername().equals(request.getUsername()) && 
-            adminRepository.existsByUsername(request.getUsername())) {
-            return ResponseEntity.badRequest().body("Username already exists");
-        }
-        if (!admin.getEmail().equals(request.getEmail()) && 
-            adminRepository.existsByEmail(request.getEmail())) {
-            return ResponseEntity.badRequest().body("Email already exists");
-        }
+            Admin admin = adminOpt.get();
+            
+            // Update in Firebase Auth
+            firebaseAuthService.updateUser(id, request);
 
-        admin.setUsername(request.getUsername());
-        admin.setEmail(request.getEmail());
-        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            admin.setPassword(passwordEncoder.encode(request.getPassword()));
-        }
-        admin.setRole(request.getRole());
+            // Update in Firestore
+            admin.setUsername(request.getUsername());
+            admin.setEmail(request.getEmail());
+            admin.setRole(request.getRole());
 
-        Admin updatedAdmin = adminRepository.save(admin);
-        return ResponseEntity.ok(convertToResponse(updatedAdmin));
+            Admin updatedAdmin = adminRepository.save(admin);
+            return ResponseEntity.ok(convertToResponse(updatedAdmin));
+        } catch (FirebaseAuthException e) {
+            return ResponseEntity.badRequest().body("Failed to update admin: " + e.getMessage());
+        }
     }
 
     public ResponseEntity<?> deleteAdmin(String id) {
-        if (!adminRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
+        try {
+            Optional<Admin> adminOpt = adminRepository.findById(id);
+            if (adminOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Delete from Firebase Auth
+            firebaseAuthService.deleteUser(id);
+
+            // Delete from Firestore
+            adminRepository.deleteById(id);
+            return ResponseEntity.ok().build();
+        } catch (FirebaseAuthException e) {
+            return ResponseEntity.badRequest().body("Failed to delete admin: " + e.getMessage());
         }
-        adminRepository.deleteById(id);
-        return ResponseEntity.ok().build();
     }
 
     public AdminResponse convertToResponse(Admin admin) {
@@ -112,5 +122,14 @@ public class AdminService {
         });
     }
 
+    public ResponseEntity<?> findById(String id) {
+        Optional<Admin> adminOpt = adminRepository.findById(id);
+        if (adminOpt.isPresent()) {
+            Admin admin = adminOpt.get();
+            return ResponseEntity.ok(convertToResponse(admin));
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }
 

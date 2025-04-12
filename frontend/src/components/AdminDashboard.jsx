@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom"
 import QrCodeIcon from "@mui/icons-material/QrCode"
 import DownloadIcon from "@mui/icons-material/Download"
 import RefreshIcon from "@mui/icons-material/Refresh"
 import NavigateNextIcon from "@mui/icons-material/NavigateNext"
 import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore"
-import DarkModeIcon from "@mui/icons-material/DarkMode"
-import LightModeIcon from "@mui/icons-material/LightMode"
 import api from "../api/api"
 import Header from "./Header";
+import Loader from './Loader';
 
 export default function AdminDashboard() {
   const [qrCodes, setQrCodes] = useState([])
@@ -16,11 +15,10 @@ export default function AdminDashboard() {
   const [selectedIds, setSelectedIds] = useState([])
   const [batchSize, setBatchSize] = useState(10)
   const [error, setError] = useState("")
-  const [generating, setGenerating] = useState(false)
   const [darkMode, setDarkMode] = useState(() => {
-    // Initialize from localStorage if available
     return localStorage.getItem("darkMode") === "true"
   })
+  const [generatingBatch, setGeneratingBatch] = useState(false)
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0)
@@ -35,16 +33,22 @@ export default function AdminDashboard() {
 
   const sortByActiveStatus = (qrCodes) => {
     return [...qrCodes].sort((a, b) => {
+      // Convert isActive to boolean to handle any truthy/falsy values
       const aIsActive = Boolean(a.isActive);
       const bIsActive = Boolean(b.isActive);
-      return aIsActive === bIsActive ? 0 : aIsActive ? -1 : 1;
+      
+      // If both have same status, maintain original order
+      if (aIsActive === bIsActive) return 0;
+      
+      // Active QRs come first (-1), inactive ones go to the end (1)
+      return aIsActive ? -1 : 1;
     });
   };
 
   useEffect(() => {
     // fetch first 3 pages
     fetchInitialPages()
-  }, [] )
+  }, [])
 
   useEffect(() => {
     if (darkMode) {
@@ -55,32 +59,36 @@ export default function AdminDashboard() {
     localStorage.setItem("darkMode", darkMode)
   }, [darkMode])
 
-  const toggleDarkMode = () => {
-    setDarkMode(prev => !prev)
-  }
 
   const fetchInitialPages = async () => {
     setLoading(true)
     try {
       const pagePromises = [0, 1, 2].map(page => api.getQRBatch(page, pageSize))
       const results = await Promise.all(pagePromises)
-      console.log("Initial pages loaded:", results);
       
-      
-
-      const firstPageData = results[0]
-      setQrCodes(sortByActiveStatus( firstPageData.qrCodes || []))
-      setTotalItems(firstPageData.totalItems || 0)
-      setTotalPages(firstPageData.totalPages || 1)
-      
-      // Cache all loaded pages
-      const newLoadedPages = {}
-      results.forEach((result, index) => {
+      // Combine all QR codes from initial pages
+      let allQrCodes = [];
+      results.forEach(result => {
         if (result && result.qrCodes) {
-          newLoadedPages[index] = sortByActiveStatus(result.qrCodes)
+          allQrCodes = [...allQrCodes, ...result.qrCodes];
         }
-      })
-      setLoadedPages(newLoadedPages)
+      });
+      
+      // Sort all QR codes
+      const sortedCodes = sortByActiveStatus(allQrCodes);
+      
+      // Split sorted codes back into pages
+      const newLoadedPages = {};
+      for (let i = 0; i < results.length; i++) {
+        const startIdx = i * pageSize;
+        const endIdx = startIdx + pageSize;
+        newLoadedPages[i] = sortedCodes.slice(startIdx, endIdx);
+      }
+      
+      setQrCodes(newLoadedPages[0] || []);
+      setTotalItems(results[0]?.totalItems || 0);
+      setTotalPages(results[0]?.totalPages || 1);
+      setLoadedPages(newLoadedPages);
       
     } catch (err) {
       setError("Failed to load QR codes")
@@ -91,35 +99,55 @@ export default function AdminDashboard() {
   }
 
   const fetchPage = async (page) => {
-    
     if (loadedPages[page]) {
       setQrCodes(loadedPages[page])
       setCurrentPage(page)
       return
     }
-    
 
     setLoadingPage(page)
     try {
-      const result = await api.getQRBatch(page, pageSize)
-      if (result && result.qrCodes) {
-
-        const sortedCodes = sortByActiveStatus(result.qrCodes)
-
-        setQrCodes(sortedCodes)
-        
-        
-        setLoadedPages(prev => ({
-          ...prev,
-          [page]: sortedCodes
-
-        }))
-        
-
-        setTotalItems(result.totalItems || totalItems)
-        setTotalPages(result.totalPages || totalPages)
-        setCurrentPage(page)
+      // Fetch all pages up to the requested page if not already loaded
+      const missingPages = [];
+      for (let i = 0; i <= page; i++) {
+        if (!loadedPages[i]) {
+          missingPages.push(i);
+        }
       }
+      
+      const pagePromises = missingPages.map(p => api.getQRBatch(p, pageSize));
+      const results = await Promise.all(pagePromises);
+      
+      // Combine existing and new QR codes
+      let allQrCodes = [];
+      Object.values(loadedPages).forEach(pageCodes => {
+        allQrCodes = [...allQrCodes, ...pageCodes];
+      });
+      
+      results.forEach(result => {
+        if (result && result.qrCodes) {
+          allQrCodes = [...allQrCodes, ...result.qrCodes];
+        }
+      });
+      
+      // Sort all QR codes
+      const sortedCodes = sortByActiveStatus(allQrCodes);
+      
+      // Split sorted codes back into pages
+      const newLoadedPages = {};
+      const totalPages = Math.ceil(sortedCodes.length / pageSize);
+      for (let i = 0; i < totalPages; i++) {
+        const startIdx = i * pageSize;
+        const endIdx = startIdx + pageSize;
+        newLoadedPages[i] = sortedCodes.slice(startIdx, endIdx);
+      }
+      
+      setQrCodes(newLoadedPages[page] || []);
+      setLoadedPages(newLoadedPages);
+      setTotalItems(results[0]?.totalItems || totalItems);
+      setTotalPages(results[0]?.totalPages || totalPages);
+      setCurrentPage(page);
+      
     } catch (err) {
       setError(`Failed to load page ${page + 1}`)
       console.error(err)
@@ -141,16 +169,15 @@ export default function AdminDashboard() {
     fetchInitialPages()
   }
 
-  
+
   const handleCheckboxChange = (id) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))
   }
 
-  const handleGenerateBatch = async () => {
-    setGenerating(true)
-    setError("")
+  const handleGenerateBatch = async (quantity) => {
+    setGeneratingBatch(true)
     try {
-      const result = await api.generateQRCodeBatch(batchSize)
+      const result = await api.generateQRCodeBatch(quantity)
       if (result.success) {
         fetchQRCodes() 
       } else {
@@ -160,7 +187,7 @@ export default function AdminDashboard() {
       setError("An error occurred while generating QR codes")
       console.error(err)
     } finally {
-      setGenerating(false)
+      setGeneratingBatch(false)
     }
   }
 
@@ -188,11 +215,6 @@ export default function AdminDashboard() {
     } else {
       setSelectedIds(qrCodes.map((qr) => qr.id))
     }
-  }
-
-  const handleLogout = async () => {
-    await api.logout();
-    navigate("/admin/login");
   }
 
 
@@ -243,11 +265,18 @@ export default function AdminDashboard() {
                 />
               </div>
               <button
-                onClick={handleGenerateBatch}
-                disabled={generating}
-                className="px-4 py-2 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-md disabled:opacity-50 transition-colors"
+                onClick={() => handleGenerateBatch(batchSize)}
+                disabled={generatingBatch}
+                className="bg-[#3a5a78] text-white py-2 px-4 rounded-md"
               >
-                {generating ? "Generating..." : "Generate QR Codes"}
+                {generatingBatch ? (
+                  <div className="flex items-center justify-center">
+                    <Loader size="small" className="mr-2" />
+                    <span>Generating...</span>
+                  </div>
+                ) : (
+                  "Generate QR Batch"
+                )}
               </button>
               <button
                 onClick={handleDownloadPDF}

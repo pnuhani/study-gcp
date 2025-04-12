@@ -17,6 +17,7 @@ export default function ForgotPassword() {
   const [sendingOtp, setSendingOtp] = useState(false)  // New state for sending OTP
   const [verifyingOtp, setVerifyingOtp] = useState(false)  // New state for verifying OTP
   const [resettingPassword, setResettingPassword] = useState(false)  // New state for password reset
+  const [resetting, setResetting] = useState(false)
   const navigate = useNavigate()
 
   const resetState = () => {

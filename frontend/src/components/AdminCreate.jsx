@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useContext } from "react"
 import { useNavigate } from "react-router-dom"
 import api from "../api/api"
@@ -11,7 +9,7 @@ export default function AdminCreate() {
         username: "",
         email: "",
         password: "",
-        role: "ADMIN", // Default role
+        role: "ADMIN", 
     })
     const [error, setError] = useState("")
     const navigate = useNavigate()

@@ -1,6 +1,5 @@
-import { jsPDF } from "jspdf";
-import { renderToString } from "react-dom/server";
-import { QRCodeSVG } from "qrcode.react";
+import { auth } from '../config/firebase'
+import jsPDF from 'jspdf';
 
 const BASE_URL = "http://localhost:8080/api";
 
@@ -28,18 +27,50 @@ const fetchWithErrorHandling = async (url, options = {}) => {
     }
 };
 
+const getAuthHeader = async () => {
+  const user = auth.currentUser
+  if (user) {
+    const token = await user.getIdToken()
+    return {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+  return {}
+}
+
+const getAuthenticatedOptions = async (customOptions = {}) => {
+    const authHeaders = await getAuthHeader();
+    return {
+        ...defaultOptions,
+        ...customOptions,
+        headers: {
+            ...defaultOptions.headers,
+            ...customOptions.headers,
+            ...authHeaders,
+        }
+    };
+};
+
 const api = {
     getQRInfo: async (qrId) => {
         try {
             const response = await fetchWithErrorHandling(`${BASE_URL}/qr?id=${qrId}`);
             console.log("Raw QR API response:", response);
-            if (response) {
-                // Normalize boolean strings
-                if (response.isActive === "true") response.isActive = true;
-                if (response.isActive === "false") response.isActive = false;
-                return response;
+            
+            if (!response) {
+                return null;
             }
-            return null;
+
+            return {
+                id: response.id,
+                isActive: Boolean(response.isActive),
+                name: response.name || null,
+                email: response.email || null,
+                address: response.address || null,
+                phoneNumber: response.phoneNumber || null,
+                createdDate: response.createdDate,
+                activationDate: response.activationDate
+            };
         } catch (error) {
             console.error("Error getting QR info:", error);
             return { notFound: true, error: error.message };
@@ -81,54 +112,13 @@ const api = {
         });
     },
 
-    adminLogin: async (username, password) => {
-        try {
-            const response = await fetch(`${BASE_URL}/admin/login`, {
-                ...defaultOptions,
-                method: "POST",
-                body: JSON.stringify({ username, password }),
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                return {
-                    success: false,
-                    message: errorData.error || `Login failed (${response.status})`,
-                };
-            }
-            
-            const data = await response.json();
-            // Small delay to ensure cookie is set
-            await new Promise(resolve => setTimeout(resolve, 100));
-            return data; // Return the raw response data
-        } catch (error) {
-            console.error("Login error:", error);
-            return { success: false, message: "Login failed: " + error.message };
-        }
+    adminLogin: async (email, password) => {
+        throw new Error('Use Firebase authentication instead')
     },
 
-    verifyAdminToken: async () => {
-        try {
-            const response = await fetch(`${BASE_URL}/admin/verify`, {
-                ...defaultOptions,
-            });
-            
-            const data = await response.json();
-            
-            if (!response.ok) {
-                return { valid: false, role: null };
-            }
-            return data;
-        } catch (error) {
-            return { valid: false, role: null };
-        }
-    },
     logout: async () => {
         try {
-            await fetch(`${BASE_URL}/admin/logout`, {
-                ...defaultOptions,
-                method: 'POST',
-            });
+            await auth.signOut(); 
             return true;
         } catch (error) {
             console.error('Logout error:', error);
@@ -137,9 +127,11 @@ const api = {
     },
 
     getQRBatch: async (page = 0, pageSize = 15) => {
-        return fetchWithErrorHandling(`${BASE_URL}/qr/all?page=${page}&size=${pageSize}`, {
-            ...defaultOptions,
-        });
+        const options = await getAuthenticatedOptions();
+        return fetchWithErrorHandling(
+            `${BASE_URL}/qr/all?page=${page}&size=${pageSize}`,
+            options
+        );
     },
 
     checkQRExists: async (qrId) => {
@@ -160,15 +152,11 @@ const api = {
     },
 
     generateQRCodeBatch: async (quantity) => {
-        const token = localStorage.getItem("adminToken");
-        return fetchWithErrorHandling(`${BASE_URL}/qr/generate`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ quantity }),
+        const options = await getAuthenticatedOptions({
+            method: 'POST',
+            body: JSON.stringify({ quantity })
         });
+        return fetchWithErrorHandling(`${BASE_URL}/qr/generate`, options);
     },
 
     generateQRCodePDF: async (qrIds) => {
@@ -280,10 +268,10 @@ const api = {
             });
             const data = await response.json();
             if (!response.ok) {
+                // Throw the specific error message from the backend
                 throw new Error(data.message || "Failed to generate OTP");
             }
             
-            // Store sessionId for OTP verification
             if (data.sessionId) {
                 sessionStorage.setItem('otpSessionId', data.sessionId);
             }
@@ -291,6 +279,7 @@ const api = {
             return data;
         } catch (error) {
             console.error("Error generating OTP:", error);
+            // Pass through the specific error message
             throw error;
         }
     },
@@ -370,22 +359,20 @@ const api = {
         }
     },
 
-    // Get all admins (for superadmin)
     getAllAdmins: async () => {
         try {
-            const response = await fetch(`${BASE_URL}/admin/superadmin/admins`, {
-                ...defaultOptions,
-                method: 'GET'
-            });
-            if (!response.ok) throw new Error('Failed to fetch admins');
-            return await response.json();
+            const options = await getAuthenticatedOptions();
+            const response = await fetchWithErrorHandling(
+                `${BASE_URL}/admin/superadmin/admins`,
+                options
+            );
+            return response;
         } catch (error) {
             console.error('Error fetching admins:', error);
             throw error;
         }
     },
 
-    // Get single admin by ID
     getAdminById: async (id) => {
         try {
             const response = await fetch(`${BASE_URL}/admin/superadmin/admins/${id}`, {
@@ -400,18 +387,19 @@ const api = {
         }
     },
 
-    // Create new admin
     createAdmin: async (adminData) => {
         try {
-            const response = await fetch(`${BASE_URL}/admin/superadmin/create`, {
-                ...defaultOptions,
+            const options = await getAuthenticatedOptions({
                 method: 'POST',
                 body: JSON.stringify(adminData)
             });
+            const response = await fetch(`${BASE_URL}/admin/superadmin/create`, options);
+            
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Failed to create admin');
+                const errorData = await response.text(); // Change from response.json()
+                throw new Error(errorData);
             }
+            
             return await response.json();
         } catch (error) {
             console.error('Error creating admin:', error);
@@ -419,33 +407,38 @@ const api = {
         }
     },
 
-    // Update admin
     updateAdmin: async (id, adminData) => {
         try {
-            const response = await fetch(`${BASE_URL}/admin/superadmin/admins/${id}`, {
-                ...defaultOptions,
+            const options = await getAuthenticatedOptions({
                 method: 'PUT',
                 body: JSON.stringify(adminData)
             });
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Failed to update admin');
-            }
-            return await response.json();
+            const response = await fetchWithErrorHandling(
+                `${BASE_URL}/admin/superadmin/admins/${id}`,
+                options
+            );
+            return response;
         } catch (error) {
             console.error('Error updating admin:', error);
             throw error;
         }
     },
 
-    // Delete admin
     deleteAdmin: async (id) => {
         try {
-            const response = await fetch(`${BASE_URL}/admin/superadmin/admins/${id}`, {
-                ...defaultOptions,
+            const options = await getAuthenticatedOptions({
                 method: 'DELETE'
             });
-            if (!response.ok) throw new Error('Failed to delete admin');
+            const response = await fetch(
+                `${BASE_URL}/admin/superadmin/admins/${id}`,
+                options
+            );
+            
+            if (!response.ok) {
+                throw new Error(`Failed to delete admin: ${response.statusText}`);
+            }
+            
+            // Return true for successful deletion without trying to parse response
             return true;
         } catch (error) {
             console.error('Error deleting admin:', error);

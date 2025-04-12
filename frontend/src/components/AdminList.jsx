@@ -5,10 +5,12 @@ import { Link } from "react-router-dom"
 import api from "../api/api"
 import Header from "./Header"
 import { ThemeContext } from "../context/ThemeContext"
+import Loader from "./Loader"
 
 export default function AdminList() {
   const [admins, setAdmins] = useState([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState(null) // Add this state
   const [error, setError] = useState(null)
   const { darkMode } = useContext(ThemeContext)
 
@@ -30,10 +32,13 @@ export default function AdminList() {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this admin?")) {
       try {
+        setDeletingId(id) // Set deleting state
         await api.deleteAdmin(id)
         setAdmins(admins.filter((admin) => admin.id !== id))
       } catch (err) {
         setError(err.message)
+      } finally {
+        setDeletingId(null) // Clear deleting state
       }
     }
   }
@@ -101,12 +106,16 @@ export default function AdminList() {
                       {admin.role}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={() => handleDelete(admin.id)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 px-3 py-1 rounded transition-colors"
-                      >
-                        Delete
-                      </button>
+                      {deletingId === admin.id ? (
+                        <Loader size="small" />
+                      ) : (
+                        <button
+                          onClick={() => handleDelete(admin.id)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 px-3 py-1 rounded transition-colors"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

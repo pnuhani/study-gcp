@@ -27,7 +27,12 @@ function QRDisplay() {
         if (result) {
 
           if (result.notFound) {
-            setError("Invalid QR code. This QR code does not exist in our system.");
+            setError("Invalid QR code. This QR code does not exist in our system. Debug info: " + 
+                     JSON.stringify({
+                         resultExists: !!result,
+                         isActive: result?.isActive,
+                         rawResult: result
+                     }));
             return;
           }
 

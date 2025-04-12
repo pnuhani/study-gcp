@@ -1,30 +1,54 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useContext, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth"
+import { auth } from "../config/firebase"
 import LockIcon from "@mui/icons-material/Lock"
-import PersonIcon from "@mui/icons-material/Person"
+import EmailIcon from "@mui/icons-material/Email"
 import DarkModeIcon from "@mui/icons-material/DarkMode"
 import LightModeIcon from "@mui/icons-material/LightMode"
-import api from "../api/api"
 import { useAuth } from "../context/AuthContext"
-import { useContext } from "react"
 import { ThemeContext } from "../context/ThemeContext"
 
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Invalid email format").min(1, "Email is required"),
   password: z.string().min(1, "Password is required"),
 })
 
 export default function AdminLogin() {
   const navigate = useNavigate()
   const [serverError, setServerError] = useState("")
-  const [loading, setLoading] = useState(false)
   const { setAuthState } = useAuth()
   const { darkMode, toggleDarkMode } = useContext(ThemeContext)
+
+  // Add this effect to prevent accessing login page when already authenticated
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const idToken = await user.getIdTokenResult()
+        const role = idToken.claims.role
+        
+        setAuthState({
+          isAuthenticated: true,
+          role: role,
+          initialized: true,
+        })
+
+        // Navigate based on role
+        if (role === "SUPERADMIN") {
+          navigate("/superadmin-dashboard", { replace: true })
+        } else if (role === "ADMIN") {
+          navigate("/admin-dashboard", { replace: true })
+        }
+      }
+    })
+
+    return () => unsubscribe()
+  }, [navigate, setAuthState])
 
   const {
     register,
@@ -32,34 +56,44 @@ export default function AdminLogin() {
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-    },
   })
 
   const onSubmit = async (data) => {
     setServerError("")
     try {
-      const result = await api.adminLogin(data.username.trim(), data.password.trim())
-      if (result.success) {
-        setAuthState({
-          isAuthenticated: true,
-          role: result.role,
-          initialized: true,
-        })
+      const userCredential = await signInWithEmailAndPassword(
+        auth, 
+        data.email.trim(), 
+        data.password.trim()
+      )
+      
+      // Get the ID token
+      const idToken = await userCredential.user.getIdTokenResult()
+      
+      // Check custom claims for role
+      const role = idToken.claims.role
+      
+      if (!role) {
+        setServerError("Insufficient permissions")
+        await auth.signOut()
+        return
+      }
 
-        if (result.role === "SUPERADMIN") {
-          navigate("/superadmin-dashboard", { replace: true })
-        } else {
-          navigate("/admin-dashboard", { replace: true })
-        }
-      } else {
-        setServerError(result.message || "Invalid login credentials")
+      setAuthState({
+        isAuthenticated: true,
+        role: role,
+        initialized: true,
+      })
+
+      // Force navigation after state update
+      if (role === "SUPERADMIN") {
+        navigate("/superadmin-dashboard", { replace: true })
+      } else if (role === "ADMIN") {
+        navigate("/admin-dashboard", { replace: true })
       }
     } catch (error) {
       console.error("Error:", error)
-      setServerError("An error occurred. Please try again.")
+      setServerError("Invalid email or password")
     }
   }
 
@@ -97,20 +131,20 @@ export default function AdminLogin() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <PersonIcon className={`h-5 w-5 ${darkMode ? "text-gray-500" : "text-gray-400"}`} />
+                <EmailIcon className={`h-5 w-5 ${darkMode ? "text-gray-500" : "text-gray-400"}`} />
               </div>
               <input
-                type="text"
-                {...register("username")}
+                type="email"
+                {...register("email")}
                 className={`w-full pl-10 pr-4 py-3 border rounded-md focus:outline-none focus:ring-2 ${
                   darkMode
                     ? "bg-gray-700 border-gray-600 text-white focus:ring-blue-600"
                     : "bg-white border-gray-300 text-gray-900 focus:ring-[#3a5a78]"
-                } ${errors.username ? "border-red-500" : ""}`}
-                placeholder="Username"
+                } ${errors.email ? "border-red-500" : ""}`}
+                placeholder="Email"
               />
-              {errors.username && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.username.message}</p>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email.message}</p>
               )}
             </div>
 

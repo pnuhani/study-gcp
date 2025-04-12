@@ -15,16 +15,16 @@ import com.qwervego.label.dto.ErrorResponse;
 import com.qwervego.label.dto.QrResponse;
 import com.qwervego.label.exception.QrNotFoundException;
 import com.qwervego.label.model.Qr;
-import com.qwervego.label.repository.QrRepository;
+import com.qwervego.label.repository.FirestoreQrRepository;
 
 @Service
 public class QrService {
 
     private final BCryptPasswordEncoder passwordEncoder;
-    private final QrRepository qrRepository;
+    private final FirestoreQrRepository qrRepository;
 
     @Autowired
-    public QrService(BCryptPasswordEncoder passwordEncoder, QrRepository qrRepository) {
+    public QrService(BCryptPasswordEncoder passwordEncoder, FirestoreQrRepository qrRepository) {
         this.passwordEncoder = passwordEncoder;
         this.qrRepository = qrRepository;
     }
@@ -41,7 +41,6 @@ public class QrService {
 
     public void hashPassword(Qr qr) {
         Objects.requireNonNull(qr.getPassword(), "Password cannot be null"); 
-
         String hashedPassword = passwordEncoder.encode(qr.getPassword());
         qr.setPassword(hashedPassword);
     }
@@ -69,26 +68,31 @@ public class QrService {
                 qrData.getActivationDate()
         );
     }
-    public ResponseEntity<Object> processQrUpdate(Map<String, Object> updates) {
 
+    public ResponseEntity<Object> processQrUpdate(Map<String, Object> updates) {
         if (!updates.containsKey("id")) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ErrorResponse("ID is required."));
         }
+        
         String id = updates.get("id").toString();
-
         Optional<Qr> existingQrOpt = findById(id);
 
-        if (!existingQrOpt.isPresent()) {
+        if (existingQrOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ErrorResponse("QR code not found for ID: " + id));
         }
+        
         Qr existingQr = existingQrOpt.get();
-
         applyUpdates(existingQr, updates);
 
-        Qr updatedQr = saveQrData(existingQr);
-        return ResponseEntity.ok(updatedQr);
+        try {
+            Qr updatedQr = saveQrData(existingQr);
+            return ResponseEntity.ok(updatedQr);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Failed to update QR code: " + e.getMessage()));
+        }
     }
 
     private void applyUpdates(Qr existingQr, Map<String, Object> updates) {
@@ -116,5 +120,4 @@ public class QrService {
     public Optional<Qr> findByPhoneNumber(String phoneNumber) {
         return qrRepository.findByPhoneNumber(phoneNumber);
     }
-
 }

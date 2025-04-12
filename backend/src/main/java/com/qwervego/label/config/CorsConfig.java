@@ -20,11 +20,16 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow frontend origin
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
+        // Allow frontend origins
+        config.setAllowedOrigins(List.of(
+            "http://localhost:5173",  // Vite dev server
+            "http://localhost:5174",
+            "http://localhost:3000"
+        ));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
@@ -35,7 +40,11 @@ public class CorsConfig {
         @Override
         public void addCorsMappings(CorsRegistry registry) {
             registry.addMapping("/api/**")
-                    .allowedOrigins("http://localhost:5173") // Your frontend URL
+                    .allowedOrigins(
+                        "http://localhost:5173",  // Vite dev server
+                        "http://localhost:5174",
+                        "http://localhost:3000"
+                    )
                     .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                     .allowedHeaders("*")
                     .allowCredentials(true)

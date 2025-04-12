@@ -1,77 +1,38 @@
 package com.qwervego.label.controller;
 
-import java.util.*;
-
 import com.qwervego.label.dto.AdminCreateRequest;
 import com.qwervego.label.dto.AdminResponse;
 import com.qwervego.label.model.Admin;
-import com.qwervego.label.repository.AdminRepository;
+import com.qwervego.label.repository.FirestoreAdminRepository;
 import com.qwervego.label.service.AdminService;
-import com.qwervego.label.service.JwtService;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
+import com.qwervego.label.service.FirebaseAuthService;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
 
-    private final JwtService jwtService;
-    private final BCryptPasswordEncoder passwordEncoder;
+    private final FirebaseAuthService firebaseAuthService;
     private final AdminService adminService;
-    private final AdminRepository adminRepository;
+    private final FirestoreAdminRepository adminRepository;
 
-    @Autowired
-    public AdminController(JwtService jwtService, BCryptPasswordEncoder passwordEncoder, AdminService adminService, AdminRepository adminRepository) {
-        this.jwtService = jwtService;
-        this.passwordEncoder = passwordEncoder;
+    public AdminController(FirebaseAuthService firebaseAuthService, AdminService adminService, FirestoreAdminRepository adminRepository) {
+        this.firebaseAuthService = firebaseAuthService;
         this.adminService = adminService;
         this.adminRepository = adminRepository;
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> credentials, HttpServletResponse response) {
-        String username = credentials.get("username");
-        String password = credentials.get("password");
+    // @GetMapping("/verify")
+    // public ResponseEntity<Map<String, Object>> verifyToken(...) { ... }
 
-        Admin admin = adminService.findByUsername(username);
-        if (admin != null && passwordEncoder.matches(password, admin.getPassword())) {
-            String role = admin.getRole();
-            ResponseCookie jwtCookie = jwtService.generateJwtCookie(username, role);
-            
-            response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
-            
-            Map<String, Object> responseBody = new HashMap<>();
-            responseBody.put("role", role);
-            responseBody.put("success", true);
-            return ResponseEntity.ok(responseBody);
-        }
-
-        return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials", "success", false));
-    }
-
-    @GetMapping("/verify")
-    public ResponseEntity<Map<String, Object>> verify(HttpServletRequest request) {
-        String jwt = jwtService.getJwtFromRequest(request);
-        if (jwt != null && jwtService.isTokenValid(jwt)) {
-            String username = jwtService.extractUsername(jwt);
-            String role = jwtService.extractRole(jwt);
-
-            Map<String, Object> responseBody = new HashMap<>();
-            responseBody.put("username", username);
-            responseBody.put("role", role);
-            responseBody.put("success", true);
-            return ResponseEntity.ok(responseBody);
-        }
-
-        return ResponseEntity.status(401).body(Map.of("error", "Invalid token", "success", false));
-    }
 
     @PostMapping("/superadmin/create")
     public ResponseEntity<?> createAdmin(@Valid @RequestBody AdminCreateRequest request) {
@@ -87,7 +48,7 @@ public class AdminController {
     public ResponseEntity<?> getAdmin(@PathVariable String id) {
         Optional<Admin> admin = adminRepository.findById(id);
         return admin.map(value -> ResponseEntity.ok(adminService.convertToResponse(value)))
-                   .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PutMapping("/superadmin/admins/{id}")
@@ -102,8 +63,6 @@ public class AdminController {
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
-        ResponseCookie jwtCookie = jwtService.getCleanJwtCookie();
-        response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
         return ResponseEntity.ok(Map.of("success", true));
     }
 }

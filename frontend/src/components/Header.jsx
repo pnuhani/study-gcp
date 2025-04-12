@@ -64,7 +64,7 @@ const Header = () => {
                     className={`flex items-center ${darkMode ? "text-gray-200 hover:text-white" : "text-gray-600 hover:text-gray-900"} transition-colors`}
                   >
                     <DashboardIcon className="mr-1 h-5 w-5" />
-                    <span>Dashboard</span>
+                    <span> SuperadminDashboard</span>
                   </Link>
                   <Link
                     to="/superadmin-dashboard/admins"
@@ -81,7 +81,7 @@ const Header = () => {
                   className={`flex items-center ${darkMode ? "text-gray-200 hover:text-white" : "text-gray-600 hover:text-gray-900"} transition-colors`}
                 >
                   <DashboardIcon className="mr-1 h-5 w-5" />
-                  <span>Dashboard</span>
+                  <span>Admin Dashboard</span>
                 </Link>
               )}
             </nav>

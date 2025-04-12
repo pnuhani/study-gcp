@@ -38,3 +38,9 @@ out/
 
 .idea
 .gradle
+
+# Firebase credentials
+serviceAccountKey.json
+**/serviceAccountKey.json
+
+serviceAccountKey.json

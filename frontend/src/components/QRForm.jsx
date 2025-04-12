@@ -43,6 +43,7 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
   const [otp, setOtp] = useState("")
   const [verifyingOtp, setVerifyingOtp] = useState(false)
   const [step, setStep] = useState(1)
+  const [submitting, setSubmitting] = useState(false)
 
   const {
     register,
@@ -105,8 +106,8 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
         setServerError(result.message || "Failed to send OTP");
       }
     } catch (error) {
-      console.error("Error sending OTP:", error);
-      setServerError("Failed to send OTP. Please try again.");
+      // Set the exact error message from the backend
+      setServerError(error.message || "Failed to send OTP. Please try again.");
     } finally {
       setSendingOtp(false);
     }
@@ -133,6 +134,7 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
   }
 
   const onSubmit = async (data) => {
+    setSubmitting(true)
     try {
       if (isEdit) {
         const result = await api.updateQRInfo(id, data)
@@ -165,6 +167,8 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
     } catch (error) {
       console.error("Error:", error)
       setServerError("An error occurred. Please try again.")
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -408,10 +412,10 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
                   )}
                   <button
                     type="submit"
-                    disabled={isSubmitting || (!isEdit && !otpVerified)}
+                    disabled={submitting || (!isEdit && !otpVerified)}
                     className={`${!isEdit ? 'w-1/2' : 'w-full'} bg-[#3a5a78] text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-md text-base sm:text-lg hover:bg-[#2c3e50] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200`}
                   >
-                    {isSubmitting ? (
+                    {submitting ? (
                       <div className="flex items-center justify-center gap-2">
                         <svg
                           className="animate-spin h-4 w-4 sm:h-5 sm:w-5 text-white"

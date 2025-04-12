@@ -1,24 +1,42 @@
-import { createContext, useContext, useState } from 'react';
-import PropTypes from 'prop-types';
+import { createContext, useContext, useState, useEffect } from 'react'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from '../config/firebase'
 
-const AuthContext = createContext(null);
+const AuthContext = createContext({})
 
 export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState({
     isAuthenticated: false,
     role: null,
-    initialized: false
-  });
+    initialized: false,
+  })
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const idToken = await user.getIdTokenResult()
+        setAuthState({
+          isAuthenticated: true,
+          role: idToken.claims.role,
+          initialized: true,
+        })
+      } else {
+        setAuthState({
+          isAuthenticated: false,
+          role: null,
+          initialized: true,
+        })
+      }
+    })
+
+    return () => unsubscribe()
+  }, [])
 
   return (
     <AuthContext.Provider value={{ authState, setAuthState }}>
       {children}
     </AuthContext.Provider>
-  );
+  )
 }
-
-AuthProvider.propTypes = {
-  children: PropTypes.node.isRequired
-};
 
 export const useAuth = () => useContext(AuthContext);

@@ -1,5 +1,3 @@
-"use client"
-
 import { createContext, useState, useEffect } from "react"
 import { useLocation } from "react-router-dom"
 import PropTypes from "prop-types"
