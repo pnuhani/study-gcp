@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: .backend/
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=prod
+      - FIREBASE_PROJECT_ID=your-project-id
+      - JWT_SECRET=your-secret-key
+      - JWT_EXPIRATION=86400000
+      - EMAIL_USERNAME=your-email
+      - EMAIL_PASSWORD=your-password
+    volumes:
+      - ./backend/src/main/resources/firebase-config.json:/app/firebase-config.json
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
