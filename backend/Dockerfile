@@ -1,28 +1,24 @@
-# Build stage
-FROM gradle:8.6.0-jdk21 AS build
-WORKDIR /app
-
-# Copy only the build files first to leverage Docker cache
-COPY build.gradle settings.gradle gradlew gradlew.bat ./
-COPY gradle ./gradle
-
-# Download dependencies (this layer will be cached unless build.gradle changes)
-RUN gradle dependencies --no-daemon
-
-# Copy source code
-COPY src ./src
-
-# Build the application
-RUN gradle clean build --no-daemon -x test
-
-# Run stage
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/build/libs/*.jar app.jar
 
 # Create a non-root user
 RUN addgroup -S spring && adduser -S spring -G spring
+
+# Create a directory for the JAR file
+RUN mkdir -p /app/jar
+
+# Copy the JAR file from local build/libs directory
+COPY build/libs/label-0.0.1-SNAPSHOT.jar /app/jar/
+
+# Verify files in /app/jar
+RUN echo "=== Contents of /app/jar ===" && \
+    ls -la /app/jar/
+
+RUN chown spring:spring /app/jar/label-0.0.1-SNAPSHOT.jar && \
+    chmod 644 /app/jar/label-0.0.1-SNAPSHOT.jar
+
+# Switch to non-root user
 USER spring
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "/app/jar/label-0.0.1-SNAPSHOT.jar"]
