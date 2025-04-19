@@ -1,3 +1,24 @@
+# Change from JRE to JDK for compilation
+FROM eclipse-temurin:21-jdk-alpine as builder
+WORKDIR /app
+
+# Install necessary packages for Gradle
+RUN apk add --no-cache bash
+
+# Copy Gradle wrapper and build files
+COPY gradlew .
+COPY gradle ./gradle
+COPY build.gradle .
+COPY settings.gradle .
+COPY src ./src
+
+# Make gradlew executable
+RUN chmod +x ./gradlew
+
+# Build the application
+RUN ./gradlew clean build -x test
+
+# Second stage: Runtime
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
@@ -7,13 +28,10 @@ RUN addgroup -S spring && adduser -S spring -G spring
 # Create a directory for the JAR file
 RUN mkdir -p /app/jar
 
-# Copy the JAR file from local build/libs directory
-COPY build/libs/label-0.0.1-SNAPSHOT.jar /app/jar/
+# Copy the JAR file from builder stage
+COPY --from=builder /app/build/libs/label-0.0.1-SNAPSHOT.jar /app/jar/
 
-# Verify files in /app/jar
-RUN echo "=== Contents of /app/jar ===" && \
-    ls -la /app/jar/
-
+# Set permissions
 RUN chown spring:spring /app/jar/label-0.0.1-SNAPSHOT.jar && \
     chmod 644 /app/jar/label-0.0.1-SNAPSHOT.jar
 
