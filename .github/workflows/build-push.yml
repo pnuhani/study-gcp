@@ -13,6 +13,10 @@ env:
   WORKING_DIRECTORY: ./frontend/
   IMAGE_TAG: dev
 
+permissions:
+  id-token: write
+  contents: read
+  
 jobs:
   deploy:
     runs-on: ubuntu-latest  # The runner environment (Ubuntu)
