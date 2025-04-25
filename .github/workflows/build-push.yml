@@ -9,7 +9,7 @@ on:
       - "frontend/**"
       - ".github/workflows/build-push.yml"
   workflow_dispatch:
-env:
+
 
 
 permissions:
