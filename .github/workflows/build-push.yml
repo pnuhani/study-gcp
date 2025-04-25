@@ -59,6 +59,7 @@ jobs:
         gcloud run deploy frontend \
           --image asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest \
           --platform managed \
+          --port 8080 \
           --region asia-south1 \
           --allow-unauthenticated
 
@@ -67,5 +68,6 @@ jobs:
         gcloud run deploy backend \
           --image asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest \
           --platform managed \
+          --port 8080 \
           --region asia-south1 \
           --allow-unauthenticated

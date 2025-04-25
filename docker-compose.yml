@@ -34,8 +34,11 @@ services:
       args:
         - NODE_ENV=production
     ports:
-      - "3000:80"
+      - "8080:8080"
+    environment:
+      - PORT=8080 
     depends_on:
+      
       - backend
     networks:
       - app-network
