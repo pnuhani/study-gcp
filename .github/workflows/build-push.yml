@@ -49,23 +49,23 @@ jobs:
 
     - name: Push Docker images to Google Container Registry
       run: |
-       docker tag study-gcpfrontend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/qwervego/frontend:latest
-        docker tag study-gcp-backend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/qwervego/backend:latest
-        docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/qwervego/frontend:latest
-        docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/qwervego/backend:latest
+       docker tag study-gcpfrontend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest
+        docker tag study-gcp-backend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest
+        docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest
+        docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest
 
-#    - name: Deploy to Cloud Run (Frontend)
-#      run: |
-#        gcloud run deploy frontend \
-#          --image gcr.io/${{ secrets.GCP_PROJECT }}/frontend:latest \
-#          --platform managed \
-#          --region us-central1 \
-#          --allow-unauthenticated
+    - name: Deploy to Cloud Run (Frontend)
+      run: |
+        gcloud run deploy frontend \
+          --image asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest \
+          --platform managed \
+          --region asia-south1 \
+          --allow-unauthenticated
 
-#    - name: Deploy to Cloud Run (Backend)
-#      run: |
-#        gcloud run deploy backend \
-#          --image gcr.io/${{ secrets.GCP_PROJECT }}/backend:latest \
-#          --platform managed \
-#          --region us-central1 \
-#          --allow-unauthenticated
+    - name: Deploy to Cloud Run (Backend)
+      run: |
+        gcloud run deploy backend \
+          --image asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest
+          --platform managed \
+          --region asia-south1 \
+          --allow-unauthenticated
