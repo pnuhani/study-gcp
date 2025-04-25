@@ -36,12 +36,19 @@ jobs:
       with:
         workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
         service_account: ${{ secrets.SERVICE_ACCOUNT_EMAIL }}
+        create_credentials_file: true
+        export_environment_variables: true
+    
     
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2.1.3
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
         install_components: 'kubectl'
+
+    - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker asia-south1-docker.pkg.dev
 
     - name: Build Docker images for frontend and backend
       run: |
