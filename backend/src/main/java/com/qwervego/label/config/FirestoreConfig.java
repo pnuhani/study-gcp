@@ -1,59 +1,57 @@
 package com.qwervego.label.config;
 
-
-//
-//
-//
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.cloud.FirestoreClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
-
-import java.io.IOException;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 
 @Configuration
 public class FirestoreConfig {
+    private static final Logger logger = LoggerFactory.getLogger(FirestoreConfig.class);
     
-  @Value("${firebase.project.id}")
+    @Value("${FIREBASE_PROJECT_ID}")
     private String projectId;
 
-    @Value("${FIREBASE_CREDENTIALS:}")
+    @Value("${FIREBASE_CREDENTIALS}")
     private String firebaseCredentials;
 
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
-        if (FirebaseApp.getApps().isEmpty()) {
-            GoogleCredentials credentials;
-            
-            if (!firebaseCredentials.isEmpty()) {
-                // Use credentials from environment variable
-                credentials = GoogleCredentials.fromStream(
+        try {
+            if (FirebaseApp.getApps().isEmpty()) {
+                logger.info("Initializing Firebase App...");
+                logger.info("Project ID: {}", projectId);
+                
+                // Use credentials directly from environment variable
+                GoogleCredentials credentials = GoogleCredentials.fromStream(
                     new ByteArrayInputStream(firebaseCredentials.getBytes())
                 );
-            } else {
-                // Fall back to file-based credentials
-                credentials = GoogleCredentials.fromStream(
-                    new ClassPathResource("serviceAccountKey.json").getInputStream()
-                );
+
+                FirebaseOptions options = FirebaseOptions.builder()
+                    .setProjectId(projectId)
+                    .setCredentials(credentials)
+                    .build();
+
+                FirebaseApp app = FirebaseApp.initializeApp(options);
+                logger.info("Firebase App initialized successfully");
+                return app;
             }
-
-            FirebaseOptions options = FirebaseOptions.builder()
-                .setProjectId(projectId)
-                .setCredentials(credentials)
-                .build();
-
-            return FirebaseApp.initializeApp(options);
+            logger.info("Using existing Firebase App instance");
+            return FirebaseApp.getInstance();
+        } catch (Exception e) {
+            logger.error("Error initializing Firebase: ", e);
+            throw e;
         }
-        return FirebaseApp.getInstance();
     }
-
 
     @Bean
     public FirebaseAuth firebaseAuth(FirebaseApp firebaseApp) {
