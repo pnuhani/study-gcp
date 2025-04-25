@@ -1,7 +1,8 @@
 on:
-  push:
+  pull_request:
     branches:
-       - master
+      - master  # or 'main' depending on your default branch name
+    types: [opened, synchronize, reopened]
 
     paths:
       - "backend/**"
@@ -9,9 +10,7 @@ on:
       - ".github/workflows/build-push.yml"
   workflow_dispatch:
 env:
-  IMAGE_NAME: qwervego-ui
-  WORKING_DIRECTORY: ./frontend/
-  IMAGE_TAG: dev
+
 
 permissions:
   id-token: write
@@ -30,7 +29,7 @@ jobs:
           sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose version
-          
+
     - name: Set up Google Cloud credentials (OIDC)
       id: gcloud-auth
       uses: google-github-actions/auth@v2
@@ -48,12 +47,12 @@ jobs:
       run: |
         docker-compose build
 
-#    - name: Push Docker images to Google Container Registry
-#      run: |
-#       docker tag frontend gcr.io/${{ secrets.GCP_PROJECT }}/frontend:latest
-#        docker tag backend gcr.io/${{ secrets.GCP_PROJECT }}/backend:latest
-#        docker push gcr.io/${{ secrets.GCP_PROJECT }}/frontend:latest
-#        docker push gcr.io/${{ secrets.GCP_PROJECT }}/backend:latest
+    - name: Push Docker images to Google Container Registry
+      run: |
+       docker tag study-gcpfrontend gcr.io/${{ secrets.GCP_PROJECT }}/frontend:latest
+        docker tag study-gcp-backend gcr.io/${{ secrets.GCP_PROJECT }}/backend:latest
+        docker push gcr.io/${{ secrets.GCP_PROJECT }}/frontend:latest
+        docker push gcr.io/${{ secrets.GCP_PROJECT }}/backend:latest
 
 #    - name: Deploy to Cloud Run (Frontend)
 #      run: |
