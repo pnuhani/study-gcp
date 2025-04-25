@@ -29,9 +29,19 @@ public class FirestoreConfig {
         try {
             if (FirebaseApp.getApps().isEmpty()) {
                 logger.info("Initializing Firebase App...");
-                logger.info("Project ID: {}", projectId);
                 
-                // Use credentials directly from environment variable
+                // Validate environment variables
+                if (projectId == null || projectId.trim().isEmpty()) {
+                    throw new IllegalArgumentException("FIREBASE_PROJECT_ID environment variable is not set");
+                }
+                if (firebaseCredentials == null || firebaseCredentials.trim().isEmpty()) {
+                    throw new IllegalArgumentException("FIREBASE_CREDENTIALS environment variable is not set");
+                }
+
+                logger.info("Using Firebase Project ID: {}", projectId);
+                logger.debug("Firebase credentials length: {}", firebaseCredentials.length());
+
+                // Initialize Firebase with environment variables
                 GoogleCredentials credentials = GoogleCredentials.fromStream(
                     new ByteArrayInputStream(firebaseCredentials.getBytes())
                 );
@@ -45,11 +55,16 @@ public class FirestoreConfig {
                 logger.info("Firebase App initialized successfully");
                 return app;
             }
-            logger.info("Using existing Firebase App instance");
             return FirebaseApp.getInstance();
+        } catch (IllegalArgumentException e) {
+            logger.error("Firebase configuration error: {}", e.getMessage());
+            throw new IllegalStateException("Failed to initialize Firebase: Configuration error", e);
+        } catch (IOException e) {
+            logger.error("Error reading Firebase credentials: {}", e.getMessage());
+            throw new IllegalStateException("Failed to initialize Firebase: Credentials error", e);
         } catch (Exception e) {
-            logger.error("Error initializing Firebase: ", e);
-            throw e;
+            logger.error("Unexpected error initializing Firebase: {}", e.getMessage());
+            throw new IllegalStateException("Failed to initialize Firebase", e);
         }
     }
 
