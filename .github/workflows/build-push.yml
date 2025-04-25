@@ -49,7 +49,7 @@ jobs:
 
     - name: Push Docker images to Google Container Registry
       run: |
-       docker tag study-gcpfrontend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest
+       docker tag study-gcp-frontend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest
         docker tag study-gcp-backend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest
         docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest
         docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest
