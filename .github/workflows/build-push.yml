@@ -1,16 +1,10 @@
 on:
-  pull_request:
+
+  push:
     branches:
-      - master  # or 'main' depending on your default branch name
-    types: [opened, synchronize, reopened]
+      - master  # Trigger the workflow when a commit is pushed to the 'main' branch
 
-    paths:
-      - "backend/**"
-      - "frontend/**"
-      - ".github/workflows/build-push.yml"
-  workflow_dispatch:
-
-
+  workflow_dispatch:  # Allows manual triggering of the workflow from the GitHub UI
 
 permissions:
   id-token: write
@@ -26,9 +20,9 @@ jobs:
 
     - name: Install Docker Compose
       run: |
-          sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose version
+        sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+        docker-compose version
 
     - name: Set up Google Cloud credentials (OIDC)
       id: gcloud-auth
@@ -39,7 +33,6 @@ jobs:
         create_credentials_file: true
         export_environment_variables: true
     
-    
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2.1.3
       with:
@@ -47,16 +40,16 @@ jobs:
         install_components: 'kubectl'
 
     - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker asia-south1-docker.pkg.dev
+      run: |
+        gcloud auth configure-docker asia-south1-docker.pkg.dev
 
     - name: Build Docker images for frontend and backend
       run: |
         docker-compose build
 
-    - name: Push Docker images to Google Container Registry
+    - name: Push Docker images to Google Artifact Registry
       run: |
-       docker tag study-gcp-frontend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest
+        docker tag study-gcp-frontend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest
         docker tag study-gcp-backend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest
         docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest
         docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest
@@ -72,7 +65,7 @@ jobs:
     - name: Deploy to Cloud Run (Backend)
       run: |
         gcloud run deploy backend \
-          --image asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest
+          --image asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest \
           --platform managed \
           --region asia-south1 \
           --allow-unauthenticated
