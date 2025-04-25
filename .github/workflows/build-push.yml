@@ -49,10 +49,10 @@ jobs:
 
     - name: Push Docker images to Google Container Registry
       run: |
-       docker tag study-gcpfrontend gcr.io/${{ secrets.GCP_PROJECT }}/frontend:latest
-        docker tag study-gcp-backend gcr.io/${{ secrets.GCP_PROJECT }}/backend:latest
-        docker push gcr.io/${{ secrets.GCP_PROJECT }}/frontend:latest
-        docker push gcr.io/${{ secrets.GCP_PROJECT }}/backend:latest
+       docker tag study-gcpfrontend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/qwervego/frontend:latest
+        docker tag study-gcp-backend asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/qwervego/backend:latest
+        docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/qwervego/frontend:latest
+        docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/qwervego/backend:latest
 
 #    - name: Deploy to Cloud Run (Frontend)
 #      run: |
