@@ -39,4 +39,12 @@ RUN chown spring:spring /app/jar/label-0.0.1-SNAPSHOT.jar && \
 USER spring
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/jar/label-0.0.1-SNAPSHOT.jar"]
+#ENTRYPOINT ["java", "-jar", "/app/jar/label-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java", \
+    "-XX:+UseContainerSupport", \
+    "-XX:MaxRAMPercentage=75.0", \
+    "-XX:InitialRAMPercentage=50.0", \
+    "-Djava.security.egd=file:/dev/./urandom", \
+    "-Dserver.port=${PORT:8080}", \
+    "-Dspring.profiles.active=prod", \
+    "-jar", "/app/jar/label-0.0.1-SNAPSHOT.jar"]
