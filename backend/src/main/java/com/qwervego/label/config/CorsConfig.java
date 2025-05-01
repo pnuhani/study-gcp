@@ -23,8 +23,7 @@ public class CorsConfig {
         // Allow frontend origins
         config.setAllowedOrigins(List.of(
             "http://localhost:5173",  // Vite dev server
-            "http://localhost:5174",
-            "http://localhost:3000"
+            "https://frontend-230228655056.asia-south1.run.app"  // Your Cloud Run frontend URL
         ));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
