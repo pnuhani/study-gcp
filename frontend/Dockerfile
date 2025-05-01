@@ -8,8 +8,8 @@ COPY package*.json ./
 # Install dependencies with caching
 RUN npm ci --prefer-offline --no-audit
 
-ARG VITE_API_URL
-ENV VITE_API_URL=${VITE_API_URL}
+ARG VITE_BASE_URL
+ENV VITE_BASE_URL=${VITE_BASE_URL}
 
 # Copy source code
 COPY . .
@@ -51,7 +51,7 @@ RUN echo "server_tokens off;" > /etc/nginx/conf.d/security.conf
 # Switch to non-root user
 USER nginxuser
 
-# Expose port 80
+# Expose port 8080
 EXPOSE 8080
 
 # Start nginx
