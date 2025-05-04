@@ -44,9 +44,8 @@ jobs:
         gcloud auth configure-docker asia-south1-docker.pkg.dev
 
     - name: Build Docker images for frontend and backend
-      run: |
-        docker-compose build
-        env:
+      run: docker-compose build        
+      env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
