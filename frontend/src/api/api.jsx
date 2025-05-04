@@ -1,7 +1,7 @@
 import { auth } from '../config/firebase'
 import jsPDF from 'jspdf';
 
-const BASE_URL = "http://localhost:8080/api";
+const BASE_URL = `${import.meta.env.VITE_BASE_URL}/api`;
 
 const defaultOptions = {
     headers: {

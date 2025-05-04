@@ -12,16 +12,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.Base64;
 
 @Configuration
 public class FirestoreConfig {
-    private static final Logger logger = LoggerFactory.getLogger(FirestoreConfig.class);
-    
-    @Value("${FIREBASE_PROJECT_ID}")
+    private final Logger logger = LoggerFactory.getLogger(FirestoreConfig.class);
+
+    @Value("${firebase.project.id}")
     private String projectId;
 
-    @Value("${FIREBASE_CREDENTIALS}")
+    @Value("${firebase.credentials}")
     private String firebaseCredentials;
 
     @Bean
@@ -30,21 +34,17 @@ public class FirestoreConfig {
             if (FirebaseApp.getApps().isEmpty()) {
                 logger.info("Initializing Firebase App...");
                 
-                // Validate environment variables
-                if (projectId == null || projectId.trim().isEmpty()) {
-                    throw new IllegalArgumentException("FIREBASE_PROJECT_ID environment variable is not set");
+                if (projectId == null || projectId.isEmpty()) {
+                    throw new IllegalArgumentException("Firebase project ID is not configured");
                 }
-                if (firebaseCredentials == null || firebaseCredentials.trim().isEmpty()) {
-                    throw new IllegalArgumentException("FIREBASE_CREDENTIALS environment variable is not set");
+                
+                if (firebaseCredentials == null || firebaseCredentials.isEmpty()) {
+                    throw new IllegalArgumentException("Firebase credentials (Base64) are not configured");
                 }
-
-                logger.info("Using Firebase Project ID: {}", projectId);
-                logger.debug("Firebase credentials length: {}", firebaseCredentials.length());
-
-                // Initialize Firebase with environment variables
-                GoogleCredentials credentials = GoogleCredentials.fromStream(
-                    new ByteArrayInputStream(firebaseCredentials.getBytes())
-                );
+                
+                logger.info("Using Base64 encoded Firebase credentials");
+                byte[] decodedCredentials = Base64.getDecoder().decode(firebaseCredentials);
+                GoogleCredentials credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(decodedCredentials));
 
                 FirebaseOptions options = FirebaseOptions.builder()
                     .setProjectId(projectId)
@@ -56,15 +56,9 @@ public class FirestoreConfig {
                 return app;
             }
             return FirebaseApp.getInstance();
-        } catch (IllegalArgumentException e) {
-            logger.error("Firebase configuration error: {}", e.getMessage());
-            throw new IllegalStateException("Failed to initialize Firebase: Configuration error", e);
-        } catch (IOException e) {
-            logger.error("Error reading Firebase credentials: {}", e.getMessage());
-            throw new IllegalStateException("Failed to initialize Firebase: Credentials error", e);
         } catch (Exception e) {
-            logger.error("Unexpected error initializing Firebase: {}", e.getMessage());
-            throw new IllegalStateException("Failed to initialize Firebase", e);
+            logger.error("Error initializing Firebase: {}", e.getMessage(), e);
+            throw e;
         }
     }
 
