@@ -35,8 +35,6 @@ services:
         - NODE_ENV=production
     ports:
       - "8080:8080"
-    environment:
-      - PORT=8080 
     depends_on:
       
       - backend
