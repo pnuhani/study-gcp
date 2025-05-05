@@ -43,15 +43,27 @@ public class InitialDataConfig {
     CommandLineRunner initDatabase(FirestoreAdminRepository adminRepository) {
         return args -> {
             try {
-                // Try to get the user by email
-                UserRecord userRecord;
+                UserRecord userRecord = null;
                 try {
+                    // Try to get the user by email
                     userRecord = firebaseAuth.getUserByEmail(superadminEmail);
-                } catch (FirebaseAuthException e) {     
-                    logger.info("error {}",e.getMessage().toString());                    // Some other error, rethrow
+                    logger.info("Superadmin user already exists: {}", superadminEmail);
+                } catch (FirebaseAuthException e) {
+                    if (e.getAuthErrorCode() != null && "USER_NOT_FOUND".equals(e.getAuthErrorCode().name())) {
+                        // User does not exist, so create
+                        UserRecord.CreateRequest request = new UserRecord.CreateRequest()
+                            .setEmail(superadminEmail)
+                            .setPassword(superadminPassword)
+                            .setEmailVerified(true);
+                        userRecord = firebaseAuth.createUser(request);
+                        logger.info("Superadmin user created: {}", superadminEmail);
+                    } else {
+                        logger.error("Unexpected FirebaseAuthException: {}", e.getMessage(), e);
+                        throw e;
+                    }
                 }
 
-                // Set custom claims for SUPERADMIN role
+                // Now userRecord is guaranteed to be non-null
                 Map<String, Object> claims = new HashMap<>();
                 claims.put("role", "SUPERADMIN");
                 firebaseAuth.setCustomUserClaims(userRecord.getUid(), claims);
