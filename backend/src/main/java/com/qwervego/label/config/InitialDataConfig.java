@@ -22,16 +22,6 @@ public class InitialDataConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(InitialDataConfig.class);
 
-    @Value("${admin.superadmin.username}")
-    private String superadminUsername;
-
-    @Value("${admin.superadmin.password}")
-    private String superadminPassword;
-
-    @Value("${admin.superadmin.email}")
-    private String superadminEmail;
-
-
     private final FirebaseAuth firebaseAuth;
 
     @Autowired
@@ -42,46 +32,8 @@ public class InitialDataConfig {
     @Bean
     CommandLineRunner initDatabase(FirestoreAdminRepository adminRepository) {
         return args -> {
-            try {
-                UserRecord userRecord = null;
-                try {
-                    // Try to get the user by email
-                    userRecord = firebaseAuth.getUserByEmail(superadminEmail);
-                    logger.info("Superadmin user already exists: {}", superadminEmail);
-                } catch (FirebaseAuthException e) {
-                    if (e.getAuthErrorCode() != null && "USER_NOT_FOUND".equals(e.getAuthErrorCode().name())) {
-                        // User does not exist, so create
-                        UserRecord.CreateRequest request = new UserRecord.CreateRequest()
-                            .setEmail(superadminEmail)
-                            .setPassword(superadminPassword)
-                            .setEmailVerified(true);
-                        userRecord = firebaseAuth.createUser(request);
-                        logger.info("Superadmin user created: {}", superadminEmail);
-                    } else {
-                        logger.error("Unexpected FirebaseAuthException: {}", e.getMessage(), e);
-                        throw e;
-                    }
-                }
-
-                // Now userRecord is guaranteed to be non-null
-                Map<String, Object> claims = new HashMap<>();
-                claims.put("role", "SUPERADMIN");
-                firebaseAuth.setCustomUserClaims(userRecord.getUid(), claims);
-
-                // Create or update admin in Firestore
-                if (!adminRepository.existsByEmail(superadminEmail)) {
-                    Admin superadmin = new Admin();
-                    superadmin.setUsername(superadminUsername);
-                    superadmin.setEmail(superadminEmail);
-                    superadmin.setRole("SUPERADMIN");
-                    superadmin.setCreatedAt(new Date());
-                    superadmin.setActive(true);
-                    adminRepository.save(superadmin);
-                }
-            } catch (FirebaseAuthException e) {
-                logger.error("Failed to initialize superadmin user: {}", e.getMessage(), e);
-                throw new RuntimeException("Failed to initialize superadmin user", e);
-            }
+            // If you have any other initialization logic, keep it here.
+            // The superadmin creation/check block is now removed.
         };
     }
 }
