@@ -3,6 +3,8 @@ package com.qwervego.label.repository;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.qwervego.label.model.Admin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -12,6 +14,7 @@ import java.util.stream.Collectors;
 
 @Repository
 public class FirestoreAdminRepository {
+    private static final Logger logger = LoggerFactory.getLogger(FirestoreAdminRepository.class);
     private final Firestore firestore;
     private final String COLLECTION_NAME = "admins";
 
@@ -69,6 +72,7 @@ public class FirestoreAdminRepository {
 
     public Optional<Admin> findByUsername(String username) {
         try {
+            logger.info("finding admin by username: {}", username.toString());
             QuerySnapshot querySnapshot = firestore.collection(COLLECTION_NAME)
                 .whereEqualTo("username", username)
                 .get()
@@ -79,12 +83,14 @@ public class FirestoreAdminRepository {
             }
             return Optional.empty();
         } catch (InterruptedException | ExecutionException e) {
+            logger.error("fetching admin by username: {}", username.toString());
             throw new RuntimeException("Error fetching admin by username", e);
         }
     }
 
     public Optional<Admin> findByEmail(String email) {
         try {
+            logger.info("finding admin by email: {}", email.toString());
             QuerySnapshot querySnapshot = firestore.collection(COLLECTION_NAME)
                 .whereEqualTo("email", email)
                 .get()
@@ -95,6 +101,7 @@ public class FirestoreAdminRepository {
             }
             return Optional.empty();
         } catch (InterruptedException | ExecutionException e) {
+            logger.error("fetching admin by email: {}", email.toString());
             throw new RuntimeException("Error fetching admin by email", e);
         }
     }
@@ -112,15 +119,22 @@ public class FirestoreAdminRepository {
     }
 
     public boolean existsByEmail(String email) {
+        logger.info("Checking if admin exists with email: {}", email);
         try {
             QuerySnapshot querySnapshot = firestore.collection(COLLECTION_NAME)
                 .whereEqualTo("email", email)
                 .get()
                 .get();
-            return !querySnapshot.isEmpty();
+            
+            if (!querySnapshot.isEmpty()) {
+                logger.info("Result for existsByEmail({}): {}", email, true);
+                return true;
+            }
+            logger.info("Result for existsByEmail({}): {}", email, false);
+            return false;
         } catch (InterruptedException | ExecutionException e) {
-            System.out.println("checking email existence: " + email);
-            throw new RuntimeException("Error checking email existence", e );
+            logger.error("Error checking email existence for {}: {}", email, e.getMessage(), e);
+            throw new RuntimeException("Error checking email existence", e);
         }
     }
 
