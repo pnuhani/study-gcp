@@ -119,7 +119,8 @@ public class FirestoreAdminRepository {
                 .get();
             return !querySnapshot.isEmpty();
         } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException("Error checking email existence", e + " Email : " + email);
+            System.out.println("checking email existence: " + email);
+            throw new RuntimeException("Error checking email existence", e );
         }
     }
 
