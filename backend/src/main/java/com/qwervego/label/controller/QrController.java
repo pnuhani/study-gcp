@@ -44,6 +44,11 @@ import com.qwervego.label.service.QrService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.FirestoreOptions;
+import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.CollectionReference;
+import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.cloud.firestore.QuerySnapshot;
 
 @RestController
 @RequestMapping("/api/qr")
@@ -68,6 +73,10 @@ public class QrController {
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.firestore = firestore;
+
+        // Log the project ID (database)
+        FirestoreOptions options = (FirestoreOptions) firestore.getOptions();
+        logger.info("Using Firestore project ID: {}", options.getProjectId());
     }
 
     @PostMapping("/add")
@@ -400,5 +409,28 @@ public class QrController {
 
         otpService.invalidateOtp(sessionId);
         return ResponseEntity.ok(Map.of("success", true, "message", "Password reset successfully."));
+    }
+
+    @GetMapping("/debug-qr")
+    public ResponseEntity<?> debugQr() {
+        // Log Firestore project ID
+        FirestoreOptions options = (FirestoreOptions) firestore.getOptions();
+        logger.info("Using Firestore project ID: {}", options.getProjectId());
+
+        // Log all documents in 'qr' collection
+        try {
+            CollectionReference qrCollection = firestore.collection("qr");
+            ApiFuture<QuerySnapshot> future = qrCollection.get();
+            List<DocumentSnapshot> documents = future.get().getDocuments();
+
+            logger.info("Documents in 'qr' collection:");
+            for (DocumentSnapshot doc : documents) {
+                logger.info("Document ID: {}, Data: {}", doc.getId(), doc.getData());
+            }
+            return ResponseEntity.ok("Logged all documents in 'qr' collection. Check logs.");
+        } catch (Exception e) {
+            logger.error("Error fetching documents from 'qr' collection: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body("Error fetching documents.");
+        }
     }
 }
