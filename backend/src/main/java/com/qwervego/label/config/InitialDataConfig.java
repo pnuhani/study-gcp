@@ -47,20 +47,8 @@ public class InitialDataConfig {
                 UserRecord userRecord;
                 try {
                     userRecord = firebaseAuth.getUserByEmail(superadminEmail);
-                    logger.info("Superadmin user already exists: {}", superadminEmail);
-                } catch (FirebaseAuthException e) {
-                    if ("USER_NOT_FOUND".equals(e.getAuthErrorCode().name())) {
-                        // User does not exist, so create
-                        UserRecord.CreateRequest request = new UserRecord.CreateRequest()
-                            .setEmail(superadminEmail)
-                            .setPassword(superadminPassword)
-                            .setEmailVerified(true);
-                        userRecord = firebaseAuth.createUser(request);
-                        logger.info("Superadmin user created: {}", superadminEmail);
-                    } else {
-                        // Some other error, rethrow
-                        throw e;
-                    }
+                } catch (FirebaseAuthException e) {     
+                    logger.info("error {}",e.getMessage().toString());                    // Some other error, rethrow
                 }
 
                 // Set custom claims for SUPERADMIN role
