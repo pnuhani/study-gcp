@@ -49,6 +49,7 @@ import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.QuerySnapshot;
+import com.google.cloud.firestore.QueryDocumentSnapshot;
 
 @RestController
 @RequestMapping("/api/qr")
@@ -421,10 +422,10 @@ public class QrController {
         try {
             CollectionReference qrCollection = firestore.collection("qr");
             ApiFuture<QuerySnapshot> future = qrCollection.get();
-            List<DocumentSnapshot> documents = future.get().getDocuments();
+            List<QueryDocumentSnapshot> documents = future.get().getDocuments();
 
             logger.info("Documents in 'qr' collection:");
-            for (DocumentSnapshot doc : documents) {
+            for (QueryDocumentSnapshot doc : documents) {
                 logger.info("Document ID: {}, Data: {}", doc.getId(), doc.getData());
             }
             return ResponseEntity.ok("Logged all documents in 'qr' collection. Check logs.");
