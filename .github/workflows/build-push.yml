@@ -68,7 +68,7 @@ jobs:
           --platform managed \
           --port 8080 \
           --region asia-south1 \
-          --set-env-vars=VITE_BASE_URL="${{ secrets.VITE_BASE_URL }}" 
+          --set-env-vars=VITE_BASE_URL="${{ secrets.VITE_BASE_URL }}"  \
           --allow-unauthenticated
 
     - name: Deploy to Cloud Run (Backend)
