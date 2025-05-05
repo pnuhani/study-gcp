@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import jakarta.validation.Valid;
 
@@ -42,6 +43,7 @@ import com.qwervego.label.service.QrService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import com.google.cloud.firestore.Firestore;
 
 @RestController
 @RequestMapping("/api/qr")
@@ -54,15 +56,18 @@ public class QrController {
     private final BCryptPasswordEncoder passwordEncoder;
     private static final Logger logger = LoggerFactory.getLogger(QrController.class);
 
+    private final Firestore firestore;
+
     @Autowired
     public QrController(FirestoreQrRepository qrRepository, QrService qrService, 
                        OtpService otpService, EmailService emailService, 
-                       BCryptPasswordEncoder passwordEncoder) {
+                       BCryptPasswordEncoder passwordEncoder, Firestore firestore) {
         this.qrRepository = qrRepository;
         this.qrService = qrService;
         this.otpService = otpService;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
+        this.firestore = firestore;
     }
 
     @PostMapping("/add")
@@ -190,11 +195,24 @@ public class QrController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getQRInfo(@RequestParam String id) {
+    public ResponseEntity<?> getQrById(@RequestParam String id) {
+        // Log all collection names
+        try {
+            String collections = 
+                StreamSupport.stream(firestore.listCollections().spliterator(), false)
+                    .map(c -> c.getId())
+                    .collect(Collectors.joining(", "));
+            logger.info("Available Firestore collections: {}", collections);
+        } catch (Exception e) {
+            logger.error("Failed to list Firestore collections: {}", e.getMessage(), e);
+        }
+
+        logger.info("Received request for QR code with id: {}", id);
         try {
             Optional<Qr> qrOpt = qrRepository.findById(id);
 
             if (qrOpt.isEmpty()) {
+                logger.warn("QR code NOT found for id: {}", id);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("notFound", true, "error", "QR code not found"));
             }
@@ -211,8 +229,10 @@ public class QrController {
             response.put("createdDate", qr.getCreatedDate());
             response.put("activationDate", qr.getActivationDate());
 
+            logger.info("QR code found for id: {}", id);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            logger.error("Error fetching QR code for id {}: {}", id, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to retrieve QR information"));
         }
