@@ -23,7 +23,6 @@ ENV VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}
 ENV VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
 ENV VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
 
-
 # Copy source code and build
 COPY . .
 RUN npm run build
@@ -45,10 +44,14 @@ COPY default.conf /etc/nginx/conf.d/default.conf
 RUN adduser -D -g '' nginxuser && \
     chown -R nginxuser:nginxuser /usr/share/nginx/html && \
     chown -R nginxuser:nginxuser /etc/nginx/conf.d && \
-    chmod -R 755 /etc/nginx/conf.d
+    chmod -R 755 /etc/nginx/conf.d && \
+    chown -R nginxuser:nginxuser /var/cache/nginx && \
+    chown -R nginxuser:nginxuser /var/log/nginx && \
+    chown -R nginxuser:nginxuser /var/run
 
-USER root
+USER nginxuser
 
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"]
+# Use shell form to ensure environment variables are properly expanded
+CMD nginx -g 'daemon off;'
