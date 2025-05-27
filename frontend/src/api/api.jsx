@@ -54,14 +54,16 @@ const getAuthenticatedOptions = async (customOptions = {}) => {
 const api = {
     getQRInfo: async (qrId) => {
         try {
+            console.log("Fetching QR info for ID:", qrId);
             const response = await fetchWithErrorHandling(`${BASE_URL}/qr?id=${qrId}`);
             console.log("Raw QR API response:", response);
             
             if (!response) {
+                console.log("No response received from API");
                 return null;
             }
 
-            return {
+            const transformedData = {
                 id: response.id,
                 isActive: Boolean(response.isActive),
                 name: response.name || null,
@@ -71,6 +73,8 @@ const api = {
                 createdDate: response.createdDate,
                 activationDate: response.activationDate
             };
+            console.log("Transformed QR data:", transformedData);
+            return transformedData;
         } catch (error) {
             console.error("Error getting QR info:", error);
             return { notFound: true, error: error.message };

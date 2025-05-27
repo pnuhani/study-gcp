@@ -20,13 +20,14 @@ function QRDisplay() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log("Fetching data for QR ID:", id);
         const result = await api.getQRInfo(id)
-        console.log("QR Data received:", result);
-        
+        console.log("QR Data received in component:", result);
         
         if (result) {
-
+          console.log("Result exists, checking notFound flag:", result.notFound);
           if (result.notFound) {
+            console.log("QR not found, setting error");
             setError("Invalid QR code. This QR code does not exist in our system. Debug info: " + 
                      JSON.stringify({
                          resultExists: !!result,
@@ -36,23 +37,23 @@ function QRDisplay() {
             return;
           }
 
-
+          console.log("Checking QR active status:", result.isActive);
           const isQrActive = result.isActive === true 
           
           if (!isQrActive) {
-            
             console.log("QR not active, redirecting to register page");
             navigate(`/qr/${id}/register`)
             return
           }
           
+          console.log("Setting QR data:", result);
           setData(result)
         } else {
-          
+          console.log("No result received, setting error");
           setError("Invalid QR code. This QR code does not exist in our system.")
         }
       } catch (error) {
-        console.error("Error:", error)
+        console.error("Error in QRDisplay:", error)
         setError("QR code not found or is invalid")
       } finally {
         setLoading(false)
