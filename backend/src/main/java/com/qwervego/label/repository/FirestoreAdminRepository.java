@@ -21,99 +21,121 @@ public class FirestoreAdminRepository {
     @Autowired
     public FirestoreAdminRepository(Firestore firestore) {
         this.firestore = firestore;
+        logger.info("Initialized FirestoreAdminRepository with collection: {}", COLLECTION_NAME);
     }
 
     public Admin save(Admin admin) {
+        logger.info("Saving admin document with ID: {}", admin.getId());
         DocumentReference docRef = admin.getId() == null ? 
             firestore.collection(COLLECTION_NAME).document() :
             firestore.collection(COLLECTION_NAME).document(admin.getId());
         
         if (admin.getId() == null) {
             admin.setId(docRef.getId());
+            logger.info("Generated new document ID: {}", docRef.getId());
         }
         
         Map<String, Object> data = convertToMap(admin);
+        logger.debug("Document data to save: {}", data);
         docRef.set(data);
+        logger.info("Successfully saved admin document with ID: {}", admin.getId());
         
         return admin;
     }
 
     public Optional<Admin> findById(String id) {
+        logger.info("Finding admin document by ID: {}", id);
         try {
             DocumentReference docRef = firestore.collection(COLLECTION_NAME).document(id);
             ApiFuture<DocumentSnapshot> future = docRef.get();
             DocumentSnapshot document = future.get();
             
             if (document.exists()) {
+                logger.info("Found admin document with ID: {}", id);
                 return Optional.of(convertToAdmin(document));
             }
+            logger.info("No admin document found with ID: {}", id);
             return Optional.empty();
         } catch (InterruptedException | ExecutionException e) {
+            logger.error("Error fetching admin document with ID {}: {}", id, e.getMessage(), e);
             throw new RuntimeException("Error fetching admin", e);
         }
     }
 
     public List<Admin> findAll() {
+        logger.info("Finding all admin documents");
         try {
             ApiFuture<QuerySnapshot> future = firestore.collection(COLLECTION_NAME).get();
             List<QueryDocumentSnapshot> documents = future.get().getDocuments();
             
+            logger.info("Retrieved {} admin documents", documents.size());
             return documents.stream()
                 .map(this::convertToAdmin)
                 .collect(Collectors.toList());
         } catch (InterruptedException | ExecutionException e) {
+            logger.error("Error fetching admin documents: {}", e.getMessage(), e);
             throw new RuntimeException("Error fetching admins", e);
         }
     }
 
     public void deleteById(String id) {
+        logger.info("Deleting admin document with ID: {}", id);
         firestore.collection(COLLECTION_NAME).document(id).delete();
+        logger.info("Successfully deleted admin document with ID: {}", id);
     }
 
     public Optional<Admin> findByUsername(String username) {
+        logger.info("Finding admin document by username: {}", username);
         try {
-            logger.info("finding admin by username: {}", username.toString());
             QuerySnapshot querySnapshot = firestore.collection(COLLECTION_NAME)
                 .whereEqualTo("username", username)
                 .get()
                 .get();
             
             if (!querySnapshot.isEmpty()) {
+                logger.info("Found admin document with username: {}", username);
                 return Optional.of(convertToAdmin(querySnapshot.getDocuments().get(0)));
             }
+            logger.info("No admin document found with username: {}", username);
             return Optional.empty();
         } catch (InterruptedException | ExecutionException e) {
-            logger.error("fetching admin by username: {}", username.toString());
+            logger.error("Error fetching admin document by username {}: {}", username, e.getMessage(), e);
             throw new RuntimeException("Error fetching admin by username", e);
         }
     }
 
     public Optional<Admin> findByEmail(String email) {
+        logger.info("Finding admin document by email: {}", email);
         try {
-            logger.info("finding admin by email: {}", email.toString());
             QuerySnapshot querySnapshot = firestore.collection(COLLECTION_NAME)
                 .whereEqualTo("email", email)
                 .get()
                 .get();
             
             if (!querySnapshot.isEmpty()) {
+                logger.info("Found admin document with email: {}", email);
                 return Optional.of(convertToAdmin(querySnapshot.getDocuments().get(0)));
             }
+            logger.info("No admin document found with email: {}", email);
             return Optional.empty();
         } catch (InterruptedException | ExecutionException e) {
-            logger.error("fetching admin by email: {}", email.toString());
+            logger.error("Error fetching admin document by email {}: {}", email, e.getMessage(), e);
             throw new RuntimeException("Error fetching admin by email", e);
         }
     }
 
     public boolean existsByUsername(String username) {
+        logger.info("Checking if admin exists with username: {}", username);
         try {
             QuerySnapshot querySnapshot = firestore.collection(COLLECTION_NAME)
                 .whereEqualTo("username", username)
                 .get()
                 .get();
-            return !querySnapshot.isEmpty();
+            boolean exists = !querySnapshot.isEmpty();
+            logger.info("Admin exists with username {}: {}", username, exists);
+            return exists;
         } catch (InterruptedException | ExecutionException e) {
+            logger.error("Error checking username existence for {}: {}", username, e.getMessage(), e);
             throw new RuntimeException("Error checking username existence", e);
         }
     }
@@ -126,12 +148,9 @@ public class FirestoreAdminRepository {
                 .get()
                 .get();
             
-            if (!querySnapshot.isEmpty()) {
-                logger.info("Result for existsByEmail({}): {}", email, true);
-                return true;
-            }
-            logger.info("Result for existsByEmail({}): {}", email, false);
-            return false;
+            boolean exists = !querySnapshot.isEmpty();
+            logger.info("Admin exists with email {}: {}", email, exists);
+            return exists;
         } catch (InterruptedException | ExecutionException e) {
             logger.error("Error checking email existence for {}: {}", email, e.getMessage(), e);
             throw new RuntimeException("Error checking email existence", e);
@@ -152,6 +171,12 @@ public class FirestoreAdminRepository {
     }
 
     private Admin convertToAdmin(DocumentSnapshot document) {
+        Map<String, Object> data = document.getData();
+        if (data == null) {
+            logger.warn("Document {} has no data", document.getId());
+            return null;
+        }
+
         Admin admin = new Admin();
         admin.setId(document.getId());
         admin.setUsername(document.getString("username"));

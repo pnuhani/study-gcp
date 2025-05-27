@@ -43,6 +43,7 @@ public class FirestoreConfig {
                 }
                 
                 logger.info("Using Base64 encoded Firebase credentials");
+                logger.info("Connecting to Firebase project: {}", projectId);
                 byte[] decodedCredentials = Base64.getDecoder().decode(firebaseCredentials);
                 GoogleCredentials credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(decodedCredentials));
 
@@ -52,9 +53,10 @@ public class FirestoreConfig {
                     .build();
 
                 FirebaseApp app = FirebaseApp.initializeApp(options);
-                logger.info("Firebase App initialized successfully");
+                logger.info("Firebase App initialized successfully with project ID: {}", projectId);
                 return app;
             }
+            logger.info("Using existing Firebase App instance with project ID: {}", projectId);
             return FirebaseApp.getInstance();
         } catch (Exception e) {
             logger.error("Error initializing Firebase: {}", e.getMessage(), e);
@@ -64,11 +66,15 @@ public class FirestoreConfig {
 
     @Bean
     public FirebaseAuth firebaseAuth(FirebaseApp firebaseApp) {
+        logger.info("Initializing Firebase Auth for project: {}", projectId);
         return FirebaseAuth.getInstance(firebaseApp);
     }
 
     @Bean
     public Firestore firestore(FirebaseApp firebaseApp) {
-        return FirestoreClient.getFirestore(firebaseApp);
+        logger.info("Initializing Firestore client for project: {}", projectId);
+        Firestore firestore = FirestoreClient.getFirestore(firebaseApp);
+        logger.info("Firestore client initialized successfully");
+        return firestore;
     }
 }
