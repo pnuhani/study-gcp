@@ -47,11 +47,13 @@ RUN adduser -D -g '' nginxuser && \
     chmod -R 755 /etc/nginx/conf.d && \
     chown -R nginxuser:nginxuser /var/cache/nginx && \
     chown -R nginxuser:nginxuser /var/log/nginx && \
-    chown -R nginxuser:nginxuser /var/run
+    chown -R nginxuser:nginxuser /var/run && \
+    chown -R nginxuser:nginxuser /usr/share/nginx && \
+    chmod -R 755 /usr/share/nginx
 
 USER nginxuser
 
 EXPOSE 8080
 
 # Use shell form to ensure environment variables are properly expanded
-CMD nginx -g 'daemon off;'
+CMD ["nginx", "-g", "daemon off;"]
