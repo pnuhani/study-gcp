@@ -51,9 +51,11 @@ RUN adduser -D -g '' nginxuser && \
     chown -R nginxuser:nginxuser /usr/share/nginx && \
     chmod -R 755 /usr/share/nginx
 
+# Switch to non-root user
 USER nginxuser
 
+# Expose port 8080
 EXPOSE 8080
 
-# Use shell form to ensure environment variables are properly expanded
+# Start nginx in foreground
 CMD ["nginx", "-g", "daemon off;"]
