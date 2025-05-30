@@ -49,7 +49,10 @@ RUN adduser -D -g '' nginxuser && \
     chown -R nginxuser:nginxuser /var/log/nginx && \
     chown -R nginxuser:nginxuser /var/run && \
     chown -R nginxuser:nginxuser /usr/share/nginx && \
-    chmod -R 755 /usr/share/nginx
+    chmod -R 755 /usr/share/nginx && \
+    mkdir -p /run/nginx && \
+    chown -R nginxuser:nginxuser /run/nginx && \
+    chmod -R 755 /run/nginx
 
 # Switch to non-root user
 USER nginxuser
