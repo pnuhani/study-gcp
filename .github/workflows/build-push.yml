@@ -43,24 +43,20 @@ jobs:
       run: |
         gcloud auth configure-docker asia-south1-docker.pkg.dev
 
-    - name: Build Docker images for frontend and backend
-      run: docker-compose build        
-      env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET}}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID}}
-          VITE_BASE_URL: ${{ secrets.VITE_BASE_URL }}
-
-    - name: Build and Push Frontend
+    - name: Build and Push Images
       run: |
+        # Build and push frontend
         docker build \
           --build-arg VITE_BASE_URL="${{ secrets.VITE_BASE_URL }}" \
           -t asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest \
           ./frontend
         docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/frontend:latest
+
+        # Build and push backend
+        docker build \
+          -t asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest \
+          ./backend
+        docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/qwervego/backend:latest
 
     - name: Deploy to Cloud Run (Frontend)
       run: |
