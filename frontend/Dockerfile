@@ -40,22 +40,15 @@ COPY --from=builder /app/dist .
 # Copy your nginx config
 COPY default.conf /etc/nginx/conf.d/default.conf
 
-# Create a non-root user and set permissions
-RUN adduser -D -g '' nginxuser && \
-    chown -R nginxuser:nginxuser /usr/share/nginx/html && \
-    chown -R nginxuser:nginxuser /etc/nginx/conf.d && \
+# Create necessary directories and set permissions
+RUN mkdir -p /run/nginx && \
+    chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /etc/nginx/conf.d && \
     chmod -R 755 /etc/nginx/conf.d && \
-    chown -R nginxuser:nginxuser /var/cache/nginx && \
-    chown -R nginxuser:nginxuser /var/log/nginx && \
-    chown -R nginxuser:nginxuser /var/run && \
-    chown -R nginxuser:nginxuser /usr/share/nginx && \
-    chmod -R 755 /usr/share/nginx && \
-    mkdir -p /run/nginx && \
-    chown -R nginxuser:nginxuser /run/nginx && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /run/nginx && \
     chmod -R 755 /run/nginx
-
-# Switch to non-root user
-USER nginxuser
 
 # Expose port 8080
 EXPOSE 8080
