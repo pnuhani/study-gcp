@@ -75,4 +75,8 @@ public class FirebaseAuthService {
     public Map<String, Object> getUserClaims(String uid) throws FirebaseAuthException {
         return firebaseAuth.getUser(uid).getCustomClaims();
     }
+
+    public String getPhoneNumber(String uid) throws FirebaseAuthException {
+        return firebaseAuth.getUser(uid).getPhoneNumber();
+    }
 } 

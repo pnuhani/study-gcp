@@ -320,26 +320,14 @@ const api = {
         }
     },
 
-    resetPassword: async (email, newPassword, qrId) => {
+    resetPassword: async (phoneNumber, newPassword, qrId) => {
         try {
-            // Get session ID and verification status
-            const sessionId = sessionStorage.getItem('otpSessionId');
-            const otpVerified = sessionStorage.getItem('otpVerified');
-            
-            console.log("Using session ID for password reset:", sessionId);
-            console.log("OTP verification status:", otpVerified);
-            
-            const response = await fetch(`${BASE_URL}/qr/reset`, {  
-                ...defaultOptions,
+            const options = await getAuthenticatedOptions({
                 method: "POST",
-                body: JSON.stringify({ 
-                    email,
-                    newPassword,
-                    qrId,
-                    sessionId, // Include the session ID
-                    otpVerified: otpVerified === 'true' // Include verification status
-                }),
+                body: JSON.stringify({ phoneNumber, newPassword, qrId })
             });
+
+            const response = await fetch(`${BASE_URL}/qr/reset-phone`, options);
             
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({
@@ -349,12 +337,6 @@ const api = {
             }
             
             const result = await response.json();
-            
-            // Now we can clear the session data
-            if (result.success) {
-                sessionStorage.removeItem('otpSessionId');
-                sessionStorage.removeItem('otpVerified');
-            }
             
             return result;
         } catch (error) {

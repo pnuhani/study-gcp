@@ -1,78 +1,24 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import Layout from "./layout"
 import api from "../api/api"
-import LockIcon from "@mui/icons-material/Lock"
+// import LockIcon from "@mui/icons-material/Lock"
+import PhoneOtp from "./PhoneOtp"
 
 export default function ForgotPassword() {
   const { id } = useParams(); // Get the QR ID from URL
-  const [email, setEmail] = useState("")
-  const [otp, setOtp] = useState("")
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [phoneVerified, setPhoneVerified] = useState(false)
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [otpSent, setOtpSent] = useState(false)
-  const [otpVerified, setOtpVerified] = useState(false)
   const [serverError, setServerError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
-  const [sendingOtp, setSendingOtp] = useState(false)  // New state for sending OTP
-  const [verifyingOtp, setVerifyingOtp] = useState(false)  // New state for verifying OTP
-  const [resettingPassword, setResettingPassword] = useState(false)  // New state for password reset
-  const [resetting, setResetting] = useState(false)
+  const [resettingPassword, setResettingPassword] = useState(false)
   const navigate = useNavigate()
 
   const resetState = () => {
-    setOtpSent(false);
-    setOtpVerified(false);
-    setSendingOtp(false);
-    setVerifyingOtp(false);
+    setPhoneVerified(false);
     setResettingPassword(false);
-    setOtp("");
-    sessionStorage.removeItem('sessionId');
-    sessionStorage.removeItem('resetEmail');
-  };
-
-  useEffect(() => {
-    // Clear any existing session storage when component mounts
-    resetState();
-  }, []);
-
-  const handleGenerateOtp = async () => {
-    setSendingOtp(true);
-    setServerError("");
-    try {
-      const result = await api.generateOtp(email, true, id);
-      if (result.success) {
-        setOtpSent(true);
-        sessionStorage.setItem('resetEmail', email);
-        setServerError(result.message);
-      } else {
-        setServerError(result.message || "Failed to send OTP");
-      }
-    } catch (error) {
-      console.error("Error sending OTP:", error);
-      setServerError("Failed to send OTP. Please try again.");
-    } finally {
-      setSendingOtp(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    setVerifyingOtp(true);
-    setServerError("");
-    try {
-      const result = await api.verifyOtp(otp);
-      if (result.valid) {
-        setOtpVerified(true);
-        setServerError("OTP verified successfully");
-      } else {
-        setServerError(result.message || "Invalid OTP");
-      }
-    } catch (error) {
-      console.error("Error verifying OTP:", error);
-      setServerError("Failed to verify OTP. Please try again.");
-    } finally {
-      setVerifyingOtp(false);
-    }
+    setPhoneNumber("");
   };
 
   const handleResetPassword = async () => {
@@ -88,14 +34,12 @@ export default function ForgotPassword() {
 
     setResettingPassword(true);
     setServerError('');
-    const storedEmail = sessionStorage.getItem('resetEmail');
-    if (!storedEmail) {
-      setServerError('Session expired. Please try again.');
-      resetState();
+    if (!phoneVerified) {
+      setServerError('Please verify your phone number first');
       return;
     }
     try {
-      const result = await api.resetPassword(storedEmail, newPassword, id);
+      const result = await api.resetPassword(phoneNumber, newPassword, id);
       if (result.success) {
         setSuccessMessage('Password reset successfully');
         resetState();
@@ -133,71 +77,16 @@ export default function ForgotPassword() {
           )}
 
           <div className="mt-8 space-y-6">
-            {!otpSent && (
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email address
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <button
-                  onClick={handleGenerateOtp}
-                  disabled={sendingOtp}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mt-4"
-                >
-                  {sendingOtp ? "Sending..." : "Send OTP"}
-                </button>
-              </div>
+            {!phoneVerified && (
+              <PhoneOtp
+                onVerified={(phone) => {
+                  setPhoneNumber(phone);
+                  setPhoneVerified(true);
+                }}
+              />
             )}
 
-            {otpSent && !otpVerified && (
-              <div>
-                <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
-                  Enter OTP
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="otp"
-                    name="otp"
-                    type="text"
-                    required
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                  />
-                </div>
-                <div className="flex justify-between items-center mt-4">
-                  <button
-                    onClick={handleVerifyOtp}
-                    disabled={verifyingOtp}
-                    className="flex-1 mr-2 justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    {verifyingOtp ? "Verifying..." : "Verify OTP"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      resetState();
-                      handleGenerateOtp();
-                    }}
-                    disabled={sendingOtp}
-                    className="flex-1 ml-2 justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    Resend OTP
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {otpVerified && (
+            {phoneVerified && (
               <div className="space-y-4">
                 <div>
                   <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">

@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.qwervego.label.dto.ErrorResponse;
 import com.qwervego.label.dto.QrResponse;
@@ -40,6 +41,7 @@ import com.qwervego.label.repository.FirestoreQrRepository;
 import com.qwervego.label.service.EmailService;
 import com.qwervego.label.service.OtpService;
 import com.qwervego.label.service.QrService;
+import com.qwervego.label.service.FirebaseAuthService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -50,6 +52,7 @@ import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.QuerySnapshot;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
+import com.google.firebase.auth.FirebaseAuthException;
 
 @RestController
 @RequestMapping("/api/qr")
@@ -59,6 +62,7 @@ public class QrController {
     private final QrService qrService;
     private final OtpService otpService;
     private final EmailService emailService;
+    private final FirebaseAuthService firebaseAuthService;
     private final BCryptPasswordEncoder passwordEncoder;
     private static final Logger logger = LoggerFactory.getLogger(QrController.class);
 
@@ -66,12 +70,14 @@ public class QrController {
 
     @Autowired
     public QrController(FirestoreQrRepository qrRepository, QrService qrService, 
-                       OtpService otpService, EmailService emailService, 
+                       OtpService otpService, EmailService emailService,
+                       FirebaseAuthService firebaseAuthService,
                        BCryptPasswordEncoder passwordEncoder, Firestore firestore) {
         this.qrRepository = qrRepository;
         this.qrService = qrService;
         this.otpService = otpService;
         this.emailService = emailService;
+        this.firebaseAuthService = firebaseAuthService;
         this.passwordEncoder = passwordEncoder;
         this.firestore = firestore;
 
@@ -410,6 +416,52 @@ public class QrController {
 
         otpService.invalidateOtp(sessionId);
         return ResponseEntity.ok(Map.of("success", true, "message", "Password reset successfully."));
+    }
+
+    @PostMapping("/reset-phone")
+    public ResponseEntity<Map<String, Object>> resetPasswordByPhone(@RequestBody Map<String, String> request, @RequestHeader("Authorization") String authHeader) {
+        String phoneNumber = request.get("phoneNumber");
+        String qrId = request.get("qrId");
+        String newPassword = request.get("newPassword");
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "Missing auth token"));
+        }
+        String idToken = authHeader.substring(7);
+
+        if (phoneNumber == null || phoneNumber.isBlank() || newPassword == null || newPassword.isBlank() || qrId == null || qrId.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "phoneNumber, qrId and newPassword are required"));
+        }
+
+        try {
+            String uid = firebaseAuthService.verifyIdToken(idToken);
+            String tokenPhone = firebaseAuthService.getPhoneNumber(uid);
+
+            if (tokenPhone == null || !tokenPhone.equals(phoneNumber)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "message", "Phone number mismatch"));
+            }
+
+            Optional<Qr> qrOpt = qrRepository.findById(qrId);
+            if (qrOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", "QR code not found"));
+            }
+
+            Qr qr = qrOpt.get();
+            if (!phoneNumber.equals(qr.getPhoneNumber())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "message", "Phone number does not match QR record"));
+            }
+
+            qr.setPassword(passwordEncoder.encode(newPassword));
+            qrRepository.save(qr);
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "Password reset successfully."));
+        } catch (FirebaseAuthException e) {
+            logger.error("Firebase token verification failed", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "Invalid token"));
+        } catch (Exception ex) {
+            logger.error("Error resetting password by phone", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("success", false, "message", "Server error"));
+        }
     }
 
     @GetMapping("/debug-qr")

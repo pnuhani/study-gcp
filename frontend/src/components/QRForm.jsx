@@ -11,9 +11,9 @@ import HomeIcon from "@mui/icons-material/Home"
 import PhoneIcon from "@mui/icons-material/Phone"
 import LockIcon from "@mui/icons-material/Lock"
 import QrCodeIcon from "@mui/icons-material/QrCode"
-import Layout from "./layout"
 import api from "../api/api"
 import { useNavigate, useParams } from "react-router-dom"
+import PhoneOtp from "./PhoneOtp"
 
 const schema = z
   .object({
@@ -35,21 +35,17 @@ const schema = z
 export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess }) {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [serverError, setServerError] = useState('')
+  const [serverError, setServerError] = useState("")
   const [loading, setLoading] = useState(true)
-  const [otpSent, setOtpSent] = useState(false)
-  const [sendingOtp, setSendingOtp] = useState(false)
-  const [otpVerified, setOtpVerified] = useState(false)
-  const [otp, setOtp] = useState("")
-  const [verifyingOtp, setVerifyingOtp] = useState(false)
+  const [phoneVerified, setPhoneVerified] = useState(false)
   const [step, setStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
 
   const {
     register,
     handleSubmit,
-    watch,
-    formState: { errors, isSubmitting },
+    setValue,
+    formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
     defaultValues: defaultValues || {
@@ -59,8 +55,6 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
       phoneNumber: "",
     },
   })
-
-  const email = watch("email")
 
   useEffect(() => {
     const checkQRExists = async () => {
@@ -76,7 +70,7 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
           return
         }
         setLoading(false)
-      } catch (error) {
+      } catch {
         alert("Error checking QR code. Please try again.")
         navigate('/', { replace: true })
       }
@@ -85,67 +79,19 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
     checkQRExists()
   }, [id, navigate, isEdit])
 
-  const handleGenerateOtp = async () => {
-    setSendingOtp(true);
-    setServerError("");
-    try {
-      // Validate email before sending OTP
-      const emailValue = watch("email");
-      if (!emailValue || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(emailValue)) {
-        setServerError("Please enter a valid email address");
-        setSendingOtp(false);
-        return;
-      }
-      
-      const result = await api.generateOtp(emailValue, false); // false for registration
-      if (result.success) {
-        setOtpSent(true);
-        setServerError(result.message);
-        setStep(2);
-      } else {
-        setServerError(result.message || "Failed to send OTP");
-      }
-    } catch (error) {
-      // Set the exact error message from the backend
-      setServerError(error.message || "Failed to send OTP. Please try again.");
-    } finally {
-      setSendingOtp(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    setVerifyingOtp(true)
-    setServerError("")
-    try {
-      const result = await api.verifyOtp(otp)
-      if (result.valid) {
-        setOtpVerified(true)
-        setServerError("")
-        setStep(3);
-      } else {
-        setServerError(result.message || "Invalid OTP")
-      }
-    } catch (error) {
-      console.error("Error verifying OTP:", error)
-      setServerError("Failed to verify OTP. Please try again.")
-    } finally {
-      setVerifyingOtp(false)
-    }
-  }
-
   const onSubmit = async (data) => {
     setSubmitting(true)
     try {
       if (isEdit) {
-        const result = await api.updateQRInfo(id, data)
+        await api.updateQRInfo(id, data)
         if (onUpdateSuccess) {
           onUpdateSuccess()
         } else {
           navigate(`/qr/${id}`)
         }
       } else {
-        if (!otpVerified) {
-          setServerError("Please verify your email before submitting the form.")
+        if (!phoneVerified) {
+          setServerError("Please verify your phone number before submitting the form.")
           return
         }
 
@@ -161,7 +107,7 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
           return
         }
 
-        const result = await api.submitQRForm(id, data)
+        await api.submitQRForm(id, data)
         navigate(`/qr/${id}/success`)
       }
     } catch (error) {
@@ -208,17 +154,11 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
                 <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mb-1 ${step >= 1 ? 'bg-[#3a5a78] text-white' : 'bg-gray-200 text-gray-500'}`}>
                   1
                 </div>
-                <span className="text-xs">Email</span>
+                <span className="text-xs">Phone</span>
               </div>
               <div className={`flex flex-col items-center ${step >= 2 ? 'text-[#3a5a78]' : 'text-gray-400'}`}>
                 <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mb-1 ${step >= 2 ? 'bg-[#3a5a78] text-white' : 'bg-gray-200 text-gray-500'}`}>
                   2
-                </div>
-                <span className="text-xs">Verify</span>
-              </div>
-              <div className={`flex flex-col items-center ${step >= 3 ? 'text-[#3a5a78]' : 'text-gray-400'}`}>
-                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mb-1 ${step >= 3 ? 'bg-[#3a5a78] text-white' : 'bg-gray-200 text-gray-500'}`}>
-                  3
                 </div>
                 <span className="text-xs">Details</span>
               </div>
@@ -235,76 +175,20 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
               </div>
             )}
 
-            {/* Step 1: Email */}
+            {/* Step 1: Phone Verification */}
             {(!isEdit && step === 1) && (
-              <div className="space-y-4 sm:space-y-6">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <div className="bg-gray-100 p-1.5 sm:p-2 rounded-full">
-                      <EmailIcon className="h-4 w-4 sm:h-5 sm:w-5 text-[#3a5a78]" />
-                    </div>
-                  </div>
-                  <input
-                    type="email"
-                    {...register("email")}
-                    placeholder="Your Email"
-                    className={`w-full pl-12 sm:pl-14 pr-4 py-2.5 sm:py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#3a5a78] ${
-                      errors.email ? "border-red-500" : "border-gray-300"
-                    }`}
-                    disabled={otpVerified}
-                  />
-                  {errors.email && <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-red-600">{errors.email.message}</p>}
-                </div>
-                <button
-                  type="button"
-                  onClick={handleGenerateOtp}
-                  disabled={sendingOtp || otpVerified}
-                  className="w-full bg-[#3a5a78] text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-md text-base sm:text-lg hover:bg-[#2c3e50] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                >
-                  {sendingOtp ? "Sending OTP..." : "Send OTP"}
-                </button>
-              </div>
+              <PhoneOtp
+                onVerified={(phone, _user, idToken) => {
+                  setPhoneVerified(true);
+                  setStep(2);
+                  setValue("phoneNumber", phone);
+                  localStorage.setItem("firebaseIdToken", idToken);
+                }}
+              />
             )}
 
-            {/* Step 2: OTP Verification */}
-            {(!isEdit && step === 2) && (
-              <div className="space-y-4 sm:space-y-6">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <div className="bg-gray-100 p-1.5 sm:p-2 rounded-full">
-                      <LockIcon className="h-4 w-4 sm:h-5 sm:w-5 text-[#3a5a78]" />
-                    </div>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Enter OTP"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    className="w-full pl-12 sm:pl-14 pr-4 py-2.5 sm:py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#3a5a78] border-gray-300"
-                  />
-                </div>
-                <div className="flex space-x-3 sm:space-x-4">
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="w-1/2 bg-gray-200 text-gray-700 py-2.5 sm:py-3 px-4 sm:px-6 rounded-md text-base sm:text-lg hover:bg-gray-300 transition-colors duration-200"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleVerifyOtp}
-                    disabled={verifyingOtp}
-                    className="w-1/2 bg-[#3a5a78] text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-md text-base sm:text-lg hover:bg-[#2c3e50] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                  >
-                    {verifyingOtp ? "Verifying..." : "Verify OTP"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Complete Registration */}
-            {((!isEdit && step === 3) || isEdit) && (
+            {/* Step 2: Complete Registration */}
+            {((!isEdit && step === 2) || isEdit) && (
               <div className="space-y-4 sm:space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div className="relative">
@@ -324,6 +208,7 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
                     {errors.name && <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-red-600">{errors.name.message}</p>}
                   </div>
 
+                  {/* Phone Number */}
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <div className="bg-gray-100 p-1.5 sm:p-2 rounded-full">
@@ -339,6 +224,24 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
                       }`}
                     />
                     {errors.phoneNumber && <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-red-600">{errors.phoneNumber.message}</p>}
+                  </div>
+
+                  {/* Email */}
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <div className="bg-gray-100 p-1.5 sm:p-2 rounded-full">
+                        <EmailIcon className="h-4 w-4 sm:h-5 sm:w-5 text-[#3a5a78]" />
+                      </div>
+                    </div>
+                    <input
+                      type="email"
+                      {...register("email")}
+                      placeholder="Your Email"
+                      className={`w-full pl-12 sm:pl-14 pr-4 py-2.5 sm:py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#3a5a78] ${
+                        errors.email ? "border-red-500" : "border-gray-300"
+                      }`}
+                    />
+                    {errors.email && <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-red-600">{errors.email.message}</p>}
                   </div>
                 </div>
 
@@ -360,7 +263,7 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
                 </div>
 
                 {/* Password fields for registration */}
-                {!isEdit && otpVerified && (
+                {!isEdit && phoneVerified && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -404,7 +307,7 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
                   {!isEdit && (
                     <button
                       type="button"
-                      onClick={() => setStep(2)}
+                      onClick={() => setStep(1)}
                       className="w-1/2 bg-gray-200 text-gray-700 py-2.5 sm:py-3 px-4 sm:px-6 rounded-md text-base sm:text-lg hover:bg-gray-300 transition-colors duration-200"
                     >
                       Back
@@ -412,38 +315,10 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
                   )}
                   <button
                     type="submit"
-                    disabled={submitting || (!isEdit && !otpVerified)}
-                    className={`${!isEdit ? 'w-1/2' : 'w-full'} bg-[#3a5a78] text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-md text-base sm:text-lg hover:bg-[#2c3e50] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200`}
+                    disabled={submitting || (!isEdit && !phoneVerified)}
+                    className="w-full bg-[#3a5a78] text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-md text-base sm:text-lg hover:bg-[#2c3e50] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                   >
-                    {submitting ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <svg
-                          className="animate-spin h-4 w-4 sm:h-5 sm:w-5 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        {isEdit ? "Updating..." : "Registering..."}
-                      </div>
-                    ) : isEdit ? (
-                      "Update Information"
-                    ) : (
-                      "Complete Registration"
-                    )}
+                    {submitting ? (isEdit ? "Updating..." : "Registering...") : (isEdit ? "Update Information" : "Complete Registration")}
                   </button>
                 </div>
               </div>
