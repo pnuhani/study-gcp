@@ -107,13 +107,11 @@ const api = {
     },
 
     submitQRForm: async (id, data) => {
-        return fetchWithErrorHandling(`${BASE_URL}/qr/add`, {
+        const options = await getAuthenticatedOptions({
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
             body: JSON.stringify({ id, ...data }),
         });
+        return fetchWithErrorHandling(`${BASE_URL}/qr/add`, options);
     },
 
     adminLogin: async (email, password) => {
@@ -262,63 +260,7 @@ const api = {
         }
     },
 
-    generateOtp: async (email, isPasswordReset = false, qrId = null) => {
-        try {
-            const response = await fetch(`${BASE_URL}/qr/generate-otp`, {
-                ...defaultOptions,
-                method: "POST",
-                body: JSON.stringify({ email, isPasswordReset, qrId }),
-                credentials: 'include'
-            });
-            const data = await response.json();
-            if (!response.ok) {
-                // Throw the specific error message from the backend
-                throw new Error(data.message || "Failed to generate OTP");
-            }
-            
-            if (data.sessionId) {
-                sessionStorage.setItem('otpSessionId', data.sessionId);
-            }
-            
-            return data;
-        } catch (error) {
-            console.error("Error generating OTP:", error);
-            // Pass through the specific error message
-            throw error;
-        }
-    },
-
-    verifyOtp: async (otp) => {
-        try {
-            // Get the stored session ID
-            const sessionId = sessionStorage.getItem('otpSessionId');
-            console.log("Using session ID for verification:", sessionId);
-            
-            const response = await fetch(`${BASE_URL}/qr/verify-otp`, {  
-                ...defaultOptions,
-                method: "POST",
-                body: JSON.stringify({ 
-                    otp,
-                    sessionId
-                }),
-            });
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.message || "Failed to verify OTP");
-            }
-            
-            // DON'T clear the sessionId here - need it for password reset
-            // Store verification status
-            if (data.valid) {
-                sessionStorage.setItem('otpVerified', 'true');
-            }
-            
-            return data;
-        } catch (error) {
-            console.error("Error verifying OTP:", error);
-            throw error;
-        }
-    },
+    // Email OTP functions removed - using phone-only authentication via Firebase
 
     resetPassword: async (phoneNumber, newPassword, qrId) => {
         try {

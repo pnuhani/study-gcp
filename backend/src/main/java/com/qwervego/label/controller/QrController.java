@@ -38,8 +38,6 @@ import com.qwervego.label.dto.ErrorResponse;
 import com.qwervego.label.dto.QrResponse;
 import com.qwervego.label.model.Qr;
 import com.qwervego.label.repository.FirestoreQrRepository;
-import com.qwervego.label.service.EmailService;
-import com.qwervego.label.service.OtpService;
 import com.qwervego.label.service.QrService;
 import com.qwervego.label.service.FirebaseAuthService;
 
@@ -60,8 +58,6 @@ public class QrController {
 
     private final FirestoreQrRepository qrRepository;
     private final QrService qrService;
-    private final OtpService otpService;
-    private final EmailService emailService;
     private final FirebaseAuthService firebaseAuthService;
     private final BCryptPasswordEncoder passwordEncoder;
     private static final Logger logger = LoggerFactory.getLogger(QrController.class);
@@ -70,13 +66,10 @@ public class QrController {
 
     @Autowired
     public QrController(FirestoreQrRepository qrRepository, QrService qrService, 
-                       OtpService otpService, EmailService emailService,
                        FirebaseAuthService firebaseAuthService,
                        BCryptPasswordEncoder passwordEncoder, Firestore firestore) {
         this.qrRepository = qrRepository;
         this.qrService = qrService;
-        this.otpService = otpService;
-        this.emailService = emailService;
         this.firebaseAuthService = firebaseAuthService;
         this.passwordEncoder = passwordEncoder;
         this.firestore = firestore;
@@ -87,25 +80,31 @@ public class QrController {
     }
 
     @PostMapping("/add")
-    public ResponseEntity<Object> addDetails(@Valid @RequestBody Qr qr, BindingResult result, HttpSession session) {
+    public ResponseEntity<Object> addDetails(@Valid @RequestBody Qr qr, BindingResult result, @RequestHeader(value = "Authorization", required = false) String authHeader) {
         Optional<Qr> existingQrOpt = qrRepository.findById(qr.getId());
 
-        // For Firebase phone authentication integration
-        // No longer require email OTP verification as phone verification is primary
-        String firebaseIdToken = (String) session.getAttribute("firebaseIdToken");
-        if (firebaseIdToken != null) {
-            // Phone authentication was used - skip email OTP requirement
-            logger.info("Using Firebase phone authentication for QR registration: {}", qr.getId());
-        } else {
-            // Fallback to email OTP for backwards compatibility
-            String sessionId = session.getId();
-            String email = qr.getEmail();
-            String storedEmail = otpService.getEmail(sessionId);
-            if (storedEmail == null || !storedEmail.equals(email)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new ErrorResponse("Email verification failed. Please verify your email first."));
+        // Firebase phone authentication is now required for all registrations
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("Phone authentication required. Please verify your phone number first."));
+        }
+
+        String idToken = authHeader.substring(7);
+        try {
+            // Verify the Firebase ID token
+            String uid = firebaseAuthService.verifyIdToken(idToken);
+            String tokenPhone = firebaseAuthService.getPhoneNumber(uid);
+
+            if (tokenPhone == null || !tokenPhone.equals(qr.getPhoneNumber())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("Phone number verification failed. The verified phone number does not match the provided phone number."));
             }
-            otpService.invalidateOtp(sessionId);
+
+            logger.info("Phone authentication successful for QR registration: {} with phone: {}", qr.getId(), tokenPhone);
+        } catch (Exception e) {
+            logger.error("Firebase token verification failed", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("Invalid or expired authentication token. Please verify your phone number again."));
         }
 
         ErrorResponse validationError = qrService.validateQrData(qr, result);
@@ -133,14 +132,8 @@ public class QrController {
         qr.setActivationDate(new Date());
         qr.setActive(true);
 
-        // Remove automatic password hashing since we're using phone authentication
-        // Only hash password if one is provided (for backwards compatibility)
-        if (qr.getPassword() != null && !qr.getPassword().trim().isEmpty()) {
-            qrService.hashPassword(qr);
-        } else {
-            // Set a default password or leave null for phone-only authentication
-            qr.setPassword(null);
-        }
+        // No password required for phone-only authentication
+        qr.setPassword(null);
 
         try {
             Qr savedQr = qrRepository.save(qr);
@@ -149,68 +142,6 @@ public class QrController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponse("An error occurred while saving QR data."));
         }
-    }
-
-    @PostMapping("/generate-otp")
-    public ResponseEntity<Map<String, Object>> generateOtp(@RequestBody Map<String, String> request, 
-                                                         HttpServletRequest httpRequest) {
-        String email = request.get("email");
-        String qrId = request.get("qrId");
-        Boolean isPasswordReset = Boolean.valueOf(request.get("isPasswordReset"));
-
-        if (email == null || email.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Email is required."));
-        }
-
-        // For password reset, verify email exists and matches the QR ID
-        if (isPasswordReset) {
-            if (qrId == null || qrId.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "QR ID is required for password reset."));
-            }
-
-            Optional<Qr> qr = qrRepository.findById(qrId);
-            if (qr.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("success", false, "message", "Invalid QR code."));
-            }
-            
-            // Verify that the email matches the QR code
-            if (!qr.get().getEmail().equals(email)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("success", false, "message", "Email does not match the QR code."));
-            }
-        }
-        // Remove the email existence check for registration
-        // This allows the same email to be used for multiple devices
-
-        String sessionId = httpRequest.getSession().getId();
-        String otp = otpService.createOtpSession(email, sessionId);
-        emailService.sendOtp(email, otp);
-
-        return ResponseEntity.ok(Map.of(
-            "success", true,
-            "message", "OTP sent to your email.",
-            "sessionId", sessionId
-        ));
-    }
-
-    @PostMapping("/verify-otp")
-    public ResponseEntity<Map<String, Object>> verifyOtp(@RequestBody Map<String, String> request) {
-        String otp = request.get("otp");
-        String sessionId = request.get("sessionId"); // Get from request body instead of HttpSession
-        
-        boolean isValid = otpService.validateOtp(sessionId, otp);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("valid", isValid);
-        
-        if (isValid) {
-            response.put("message", "OTP verified successfully");
-        } else {
-            response.put("message", "Invalid OTP or OTP expired");
-        }
-        
-        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/update")
@@ -290,24 +221,6 @@ public class QrController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/verify")
-    public ResponseEntity<Map<String, Boolean>> verifyPassword(@RequestBody Map<String, String> request) {
-        String id = request.get("id");
-        String password = request.get("password");
-
-        if (id == null || password == null) {
-            return ResponseEntity.badRequest().body(Collections.singletonMap("valid", false));
-        }
-
-        Optional<Qr> qrOpt = qrRepository.findById(id);
-        if (qrOpt.isEmpty()) {
-            return ResponseEntity.ok(Collections.singletonMap("valid", false));
-        }
-
-        boolean isValid = passwordEncoder.matches(password, qrOpt.get().getPassword());
-        return ResponseEntity.ok(Collections.singletonMap("valid", isValid));
-    }
-
     @PostMapping("/generate")
     public ResponseEntity<Map<String, Object>> generateQRCodeBatch(@RequestBody Map<String, Integer> request) {
         Integer quantity = request.get("quantity");
@@ -373,58 +286,7 @@ public class QrController {
         return sb.toString();
     }
 
-    @PostMapping("/reset")
-    public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
-        String email = request.get("email");
-        String qrId = request.get("qrId");
-        String newPassword = request.get("newPassword");
-        // Get the sessionId from the request body, not the current HTTP session
-        String sessionId = request.get("sessionId");
-
-        if (email == null || email.trim().isEmpty() || newPassword == null || newPassword.trim().isEmpty() 
-                || qrId == null || qrId.trim().isEmpty() || sessionId == null) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false, 
-                "message", "Email, QR ID, sessionId and new password are required."
-            ));
-        }
-
-        // Find QR by ID first
-        Optional<Qr> qrOpt = qrRepository.findById(qrId);
-        if (qrOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
-                "success", false, 
-                "message", "QR code not found."
-            ));
-        }
-
-        // Verify email matches the QR code
-        Qr qr = qrOpt.get();
-        if (!qr.getEmail().equals(email)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                "success", false, 
-                "message", "Email does not match the QR code."
-            ));
-        }
-
-        // Get email from the OTP service using the provided sessionId
-        String storedEmail = otpService.getEmail(sessionId);
-        logger.info("Password reset request - Email: {}, StoredEmail: {}, SessionID: {}", 
-                    email, storedEmail, sessionId);
-
-        if (storedEmail == null || !storedEmail.equals(email)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                "success", false, 
-                "message", "Email verification failed."
-            ));
-        }
-
-        qr.setPassword(passwordEncoder.encode(newPassword));
-        qrRepository.save(qr);
-
-        otpService.invalidateOtp(sessionId);
-        return ResponseEntity.ok(Map.of("success", true, "message", "Password reset successfully."));
-    }
+    // Email-based password reset endpoint removed - using phone-only authentication via Firebase
 
     @PostMapping("/reset-phone")
     public ResponseEntity<Map<String, Object>> resetPasswordByPhone(@RequestBody Map<String, String> request, @RequestHeader("Authorization") String authHeader) {
