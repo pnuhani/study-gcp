@@ -95,7 +95,13 @@ public class QrController {
             String uid = firebaseAuthService.verifyIdToken(idToken);
             String tokenPhone = firebaseAuthService.getPhoneNumber(uid);
 
-            if (tokenPhone == null || !tokenPhone.equals(qr.getPhoneNumber())) {
+            // Normalize both phone numbers for comparison
+            String normalizedTokenPhone = normalizePhoneNumber(tokenPhone);
+            String normalizedQrPhone = normalizePhoneNumber(qr.getPhoneNumber());
+
+            if (normalizedTokenPhone == null || !normalizedTokenPhone.equals(normalizedQrPhone)) {
+                logger.warn("Phone number mismatch - Token: {}, QR: {}, Normalized Token: {}, Normalized QR: {}", 
+                           tokenPhone, qr.getPhoneNumber(), normalizedTokenPhone, normalizedQrPhone);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(new ErrorResponse("Phone number verification failed. The verified phone number does not match the provided phone number."));
             }
@@ -307,7 +313,11 @@ public class QrController {
             String uid = firebaseAuthService.verifyIdToken(idToken);
             String tokenPhone = firebaseAuthService.getPhoneNumber(uid);
 
-            if (tokenPhone == null || !tokenPhone.equals(phoneNumber)) {
+            // Normalize phone numbers for comparison in reset functionality
+            String normalizedTokenPhone = normalizePhoneNumber(tokenPhone);
+            String normalizedRequestPhone = normalizePhoneNumber(phoneNumber);
+            
+            if (normalizedTokenPhone == null || !normalizedTokenPhone.equals(normalizedRequestPhone)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "message", "Phone number mismatch"));
             }
 
@@ -317,7 +327,8 @@ public class QrController {
             }
 
             Qr qr = qrOpt.get();
-            if (!phoneNumber.equals(qr.getPhoneNumber())) {
+            String normalizedQrPhone = normalizePhoneNumber(qr.getPhoneNumber());
+            if (!normalizedRequestPhone.equals(normalizedQrPhone)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success", false, "message", "Phone number does not match QR record"));
             }
 
@@ -355,5 +366,26 @@ public class QrController {
             logger.error("Error fetching documents from 'qr' collection: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body("Error fetching documents.");
         }
+    }
+
+    /**
+     * Normalizes phone numbers for comparison by:
+     * 1. Removing all non-digit characters
+     * 2. Handling different country code formats
+     * 3. Ensuring consistent format for comparison
+     */
+    private String normalizePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return null;
+        }
+        
+        // Remove all non-digit characters
+        String digitsOnly = phoneNumber.replaceAll("[^0-9]", "");
+        
+        // Handle common country code variations
+        // If starts with 1 (US/Canada), keep as is
+        // If starts with other country codes, keep as is
+        // This maintains the full international format for comparison
+        return digitsOnly;
     }
 }

@@ -115,9 +115,15 @@ export default function PhoneOtp({ onVerified, containerClassName = "" }) {
       const result = await confirmationResultRef.current.confirm(code);
       const user = result.user;
       const idToken = await user.getIdToken();
+      
+      // Get the phone number from Firebase user object to ensure consistent formatting
+      const firebasePhoneNumber = user.phoneNumber;
+      
       setStep(3);
       if (onVerified) {
-        onVerified(phoneNumber, user, idToken);
+        // Pass the Firebase-normalized phone number instead of user input
+        // Fallback to user input if Firebase phone number is not available
+        onVerified(firebasePhoneNumber || phoneNumber, user, idToken);
       }
     } catch (err) {
       console.error("Failed to verify code", err);

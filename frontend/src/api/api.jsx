@@ -102,6 +102,7 @@ const api = {
             });
             return response.valid;
         } catch (error) {
+            console.error("Password verification failed:", error);
             return false;
         }
     },
@@ -114,7 +115,7 @@ const api = {
         return fetchWithErrorHandling(`${BASE_URL}/qr/add`, options);
     },
 
-    adminLogin: async (email, password) => {
+    adminLogin: async () => {
         throw new Error('Use Firebase authentication instead')
     },
 
@@ -167,7 +168,7 @@ const api = {
         }
         try {
             const token = localStorage.getItem("adminToken");
-            const qrData = await fetchWithErrorHandling(`${BASE_URL}/qr/batch`, {
+            await fetchWithErrorHandling(`${BASE_URL}/qr/batch`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
