@@ -5,6 +5,7 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
 } from "firebase/auth";
+import PhoneInput from "./PhoneInput";
 
 /**
  * PhoneOtp component
@@ -77,7 +78,7 @@ export default function PhoneOtp({ onVerified, containerClassName = "" }) {
   const handleSendOtp = async () => {
     setError("");
     if (!phoneNumber) {
-      setError("Please enter a valid phone number (with country code).");
+      setError("Please enter a valid phone number.");
       return;
     }
 
@@ -143,12 +144,12 @@ export default function PhoneOtp({ onVerified, containerClassName = "" }) {
 
       {step === 1 && (
         <div className="space-y-4">
-          <input
-            type="tel"
-            placeholder="e.g. +1 650-555-3434"
+          <PhoneInput
             value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            className="w-full px-4 py-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={setPhoneNumber}
+            placeholder="Enter your phone number"
+            showLabel={false}
+            className="focus:ring-blue-500"
           />
           <button
             type="button"
