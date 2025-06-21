@@ -14,7 +14,7 @@ export const ThemeProvider = ({ children }) => {
   // List of paths that should always be in light mode
   const lightModeRoutes = [
     "/qr",
-    "/forgot-password"
+    "/verify-identity"
   ]
 
   const shouldForceLightMode = () => {

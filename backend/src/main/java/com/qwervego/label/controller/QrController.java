@@ -89,14 +89,15 @@ public class QrController {
     @PostMapping("/add")
     public ResponseEntity<Object> addDetails(@Valid @RequestBody Qr qr, BindingResult result, HttpSession session) {
         Optional<Qr> existingQrOpt = qrRepository.findById(qr.getId());
-        boolean isNewQr = existingQrOpt.isEmpty();
 
-        if (isNewQr) {
-            if (qr.getPassword() == null || qr.getPassword().trim().isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(new ErrorResponse("Password is required for new QR codes."));
-            }
-
+        // For Firebase phone authentication integration
+        // No longer require email OTP verification as phone verification is primary
+        String firebaseIdToken = (String) session.getAttribute("firebaseIdToken");
+        if (firebaseIdToken != null) {
+            // Phone authentication was used - skip email OTP requirement
+            logger.info("Using Firebase phone authentication for QR registration: {}", qr.getId());
+        } else {
+            // Fallback to email OTP for backwards compatibility
             String sessionId = session.getId();
             String email = qr.getEmail();
             String storedEmail = otpService.getEmail(sessionId);
@@ -132,7 +133,14 @@ public class QrController {
         qr.setActivationDate(new Date());
         qr.setActive(true);
 
-        qrService.hashPassword(qr);
+        // Remove automatic password hashing since we're using phone authentication
+        // Only hash password if one is provided (for backwards compatibility)
+        if (qr.getPassword() != null && !qr.getPassword().trim().isEmpty()) {
+            qrService.hashPassword(qr);
+        } else {
+            // Set a default password or leave null for phone-only authentication
+            qr.setPassword(null);
+        }
 
         try {
             Qr savedQr = qrRepository.save(qr);

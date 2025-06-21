@@ -33,7 +33,7 @@ const router = createBrowserRouter([
         element: <QREdit />
       },
       {
-        path: "forgot-password/:id",
+        path: "verify-identity/:id",
         element: <ForgetPassword />
       },
       {

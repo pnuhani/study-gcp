@@ -2,7 +2,6 @@ package com.qwervego.label.model;
 
 import java.util.Date;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,7 +25,8 @@ public class Qr {
     @NotBlank(message = "Phone Number is required")
     private String phoneNumber;
 
-    @Size(min = 4, message = "Password must be at least 8 characters")
+    // Password field kept for backwards compatibility but no longer validated
+    // Phone OTP authentication is now used instead
     private String password;
 
     private Date createdDate;

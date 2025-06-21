@@ -40,9 +40,12 @@ public class QrService {
     }
 
     public void hashPassword(Qr qr) {
-        Objects.requireNonNull(qr.getPassword(), "Password cannot be null"); 
-        String hashedPassword = passwordEncoder.encode(qr.getPassword());
-        qr.setPassword(hashedPassword);
+        // Only hash password if it's provided (for backwards compatibility)
+        // Phone OTP authentication is now the primary method
+        if (qr.getPassword() != null && !qr.getPassword().trim().isEmpty()) {
+            String hashedPassword = passwordEncoder.encode(qr.getPassword());
+            qr.setPassword(hashedPassword);
+        }
     }
 
     public Qr saveQrData(Qr qr) {
