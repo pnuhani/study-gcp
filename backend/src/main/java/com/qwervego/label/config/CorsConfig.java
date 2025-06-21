@@ -20,11 +20,14 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow frontend origins
+        // Allow frontend origins - both localhost and 127.0.0.1 for development
         config.setAllowedOrigins(List.of(
             "http://localhost:5173",  // Vite dev server
             "http://localhost:5174",
             "http://localhost:3000",
+            "http://127.0.0.1:5173",  // IP-based access for Firebase auth
+            "http://127.0.0.1:5174",
+            "http://127.0.0.1:3000",
             "https://frontend-230228655056.asia-south1.run.app"  // Your Cloud Run frontend URL
         ));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -44,8 +47,11 @@ public class CorsConfig {
                     .allowedOrigins(
                         "http://localhost:5173",  // Vite dev server
                         "http://localhost:5174",
-                            "https://frontend-230228655056.asia-south1.run.app",
-                        "http://localhost:3000"
+                        "http://localhost:3000",
+                        "http://127.0.0.1:5173",  // IP-based access for Firebase auth
+                        "http://127.0.0.1:5174",
+                        "http://127.0.0.1:3000",
+                        "https://frontend-230228655056.asia-south1.run.app"
                     )
                     .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                     .allowedHeaders("*")
