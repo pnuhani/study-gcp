@@ -30,8 +30,8 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
   const navigate = useNavigate()
   const [serverError, setServerError] = useState("")
   const [loading, setLoading] = useState(true)
-  const [phoneVerified, setPhoneVerified] = useState(false)
-  const [step, setStep] = useState(1) // For both new registration and edit: 1 = phone verification, 2 = form details
+  const [phoneVerified, setPhoneVerified] = useState(isEdit) // If isEdit=true, phone already verified in QREdit
+  const [step, setStep] = useState(isEdit ? 2 : 1) // Skip phone verification for edit mode
   const [submitting, setSubmitting] = useState(false)
 
   const {
@@ -71,6 +71,13 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
 
     checkQRExists()
   }, [id, navigate, isEdit])
+
+  // Set phone number when in edit mode with defaultValues
+  useEffect(() => {
+    if (isEdit && defaultValues && defaultValues.phoneNumber) {
+      setValue("phoneNumber", defaultValues.phoneNumber);
+    }
+  }, [isEdit, defaultValues, setValue])
 
   const onSubmit = async (data) => {
     setSubmitting(true)
@@ -138,7 +145,7 @@ export default function QRForm({ isEdit = false, defaultValues, onUpdateSuccess 
           </h2>
           <p className="mt-2 text-gray-200 text-sm">
             {isEdit 
-              ? "Verify your phone and update device information" 
+              ? "Update your device information" 
               : "Complete the registration process to activate your device"}
           </p>
         </div>
