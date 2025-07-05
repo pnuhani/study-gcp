@@ -7,6 +7,7 @@ import {
   Phone as PhoneIcon,
   Edit as EditIcon,
   LocationOn as LocationIcon,
+  WhatsApp as WhatsAppIcon,
 } from "@mui/icons-material"
 import api from "../api/api"
 
@@ -96,9 +97,24 @@ if (error) {
     phoneNumber: data.phoneNumber || "Not provided",
   }
 
+  const handleWhatsAppClick = () => {
+    const message = encodeURIComponent(`Hello! I found a medical device with QR code ${id}. Please help me return it to the owner.`);
+    const whatsappUrl = `https://wa.me/919999756745?text=${message}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
   return (
     <div className="container max-w-md mx-auto px-4 py-8">
-      <div className="bg-white rounded-lg overflow-hidden shadow-lg border border-gray-200">
+      <div className="bg-white rounded-lg overflow-hidden shadow-lg border border-gray-200 relative">
+        {/* Edit Button - Top Right Corner */}
+        <button
+          onClick={() => navigate(`/qr/${id}/edit`)}
+          className="absolute top-4 right-4 bg-white hover:bg-gray-50 text-[#3a5a78] p-2 rounded-full shadow-md border border-gray-200 transition-all duration-200 hover:shadow-lg z-10"
+          title="Edit Information"
+        >
+          <EditIcon className="w-4 h-4" />
+        </button>
+
         {/* Header */}
         <div className="bg-gradient-to-r from-[#3a5a78] to-[#2c3e50] px-6 py-8 text-center">
           <div className="flex justify-center mb-4">
@@ -156,7 +172,15 @@ if (error) {
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4">
+        <div className="bg-gray-50 px-6 py-4 space-y-3">
+          <button
+            onClick={handleWhatsAppClick}
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-md text-lg flex items-center justify-center gap-2 transition-colors duration-200"
+          >
+            <WhatsAppIcon className="w-5 h-5" />
+            Talk with CareVego Care
+          </button>
+          
           <button
             onClick={() => navigate(`/qr/${id}/edit`)}
             className="w-full bg-[#3a5a78] hover:bg-[#2c3e50] text-white py-3 px-6 rounded-md text-lg flex items-center justify-center gap-2 transition-colors duration-200"
