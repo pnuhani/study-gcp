@@ -98,7 +98,7 @@ if (error) {
   }
 
   const handleWhatsAppClick = () => {
-    const message = encodeURIComponent(`Hello! I found a medical device with QR code ${id}. Please help me return it to the owner.`);
+    const message = encodeURIComponent(`Hello! I would like to get in touch with CareVego Care for support and guidance.`);
     const whatsappUrl = `https://wa.me/919999756745?text=${message}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -181,7 +181,7 @@ if (error) {
           
           <button
             onClick={handleWhatsAppClick}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-md text-lg flex items-center justify-center gap-2 transition-colors duration-200"
+            className="w-full bg-[#3a5a78] hover:bg-[#2c3e50] text-white py-3 px-6 rounded-md text-lg flex items-center justify-center gap-2 transition-colors duration-200"
           >
             <WhatsAppIcon className="w-5 h-5" />
             Talk with CareVego Care
