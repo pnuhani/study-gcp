@@ -155,8 +155,12 @@ if (error) {
               <div className="bg-gray-100 p-2 rounded-full">
                 <PhoneIcon className="h-5 w-5 text-[#3a5a78]" />
               </div>
-              <a href={`tel:${safeData.phoneNumber}`} className="text-gray-700">
+              <a 
+                href={`tel:${safeData.phoneNumber}`} 
+                className="text-gray-700 hover:text-[#3a5a78] hover:underline cursor-pointer transition-colors duration-200 flex items-center gap-2"
+              >
                 {safeData.phoneNumber}
+                <span className="text-xs bg-[#3a5a78] text-white px-2 py-1 rounded-full">Tap to call</span>
               </a>
             </div>
 
@@ -164,8 +168,12 @@ if (error) {
               <div className="bg-gray-100 p-2 rounded-full">
                 <EmailIcon className="h-5 w-5 text-[#3a5a78]" />
               </div>
-              <a href={`mailto:${safeData.email}`} className="text-gray-700">
+              <a 
+                href={`mailto:${safeData.email}`} 
+                className="text-gray-700 hover:text-[#3a5a78] hover:underline cursor-pointer transition-colors duration-200 flex items-center gap-2"
+              >
                 {safeData.email}
+                <span className="text-xs bg-[#3a5a78] text-white px-2 py-1 rounded-full">Tap to email</span>
               </a>
             </div>
           </div>
