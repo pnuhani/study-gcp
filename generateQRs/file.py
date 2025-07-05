@@ -7,43 +7,83 @@ from datetime import datetime
 import pytz
 
 def generate_qr_code(url, random_hash):
+    # Create QR code with better parameters for professional look
     qr = qrcode.QRCode(
         version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,  # Higher error correction for better scanning
+        box_size=12,  # Larger boxes for better visibility
+        border=2,  # Smaller border for cleaner look
     )
     qr.add_data(url)
     qr.make(fit=True)
 
-    img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-
-    # Add the random hash to the image
-    draw = ImageDraw.Draw(img)
-    font_size = 15  # Adjust font size as needed
+    # Create QR image with professional colors
+    img = qr.make_image(fill_color="#1a1a1a", back_color="#ffffff").convert("RGB")
+    
+    # Create a larger canvas for professional layout
+    canvas_width = img.width + 80  # Add padding on sides
+    canvas_height = img.height + 120  # Add padding top and bottom
+    
+    # Create new image with white background
+    canvas = Image.new("RGB", (canvas_width, canvas_height), "#ffffff")
+    
+    # Calculate center position for QR code
+    qr_x = (canvas_width - img.width) // 2
+    qr_y = 40  # Top padding
+    
+    # Paste QR code onto canvas
+    canvas.paste(img, (qr_x, qr_y))
+    
+    # Create drawing object
+    draw = ImageDraw.Draw(canvas)
+    
+    # Try to load professional fonts
     try:
-        # Use a system font (fallback to default if not available)
-        font = ImageFont.truetype("arial.ttf", font_size)
+        # Try different professional fonts
+        title_font = ImageFont.truetype("Arial-Bold.ttf", 18)
+        subtitle_font = ImageFont.truetype("Arial.ttf", 14)
     except:
-        # Use default font if "arial.ttf" is not available
-        font = ImageFont.load_default()
-
-    # Position text in the lower-left corner
-    text_position = (10, img.height - 20)  # Adjust for padding
-    draw.text(text_position, random_hash, fill="black", font=font)
-
+        try:
+            title_font = ImageFont.truetype("arial.ttf", 18)
+            subtitle_font = ImageFont.truetype("arial.ttf", 14)
+        except:
+            # Fallback to default fonts
+            title_font = ImageFont.load_default()
+            subtitle_font = ImageFont.load_default()
+    
+    # Add professional footer with hash
+    footer_text = f"ID: {random_hash}"
+    footer_bbox = draw.textbbox((0, 0), footer_text, font=subtitle_font)
+    footer_width = footer_bbox[2] - footer_bbox[0]
+    footer_x = (canvas_width - footer_width) // 2
+    footer_y = canvas_height - 35
+    
+    # Add subtle background for footer text
+    padding = 8
+    footer_bg_bbox = [
+        footer_x - padding,
+        footer_y - padding,
+        footer_x + footer_width + padding,
+        footer_y + 20 + padding
+    ]
+    draw.rectangle(footer_bg_bbox, fill="#f8f9fa", outline="#e9ecef")
+    draw.text((footer_x, footer_y), footer_text, fill="#495057", font=subtitle_font)
+    
+    # Add subtle border
+    draw.rectangle([0, 0, canvas_width-1, canvas_height-1], outline="#dee2e6", width=2)
+    
     # Generate file name with ddMMyyyy format
     current_date = datetime.now().strftime("%d%m%Y")
     file_name = f"{current_date}_{random_hash}.png"
-
-    img.save(file_name)
+    
+    canvas.save(file_name, quality=95, optimize=True)
 
 def generate_random_hash(length=8):
     characters = string.ascii_letters + string.digits
     return ''.join(random.choice(characters) for _ in range(length))
 
 if __name__ == "__main__":
-    num_qr_codes = 2
+    num_qr_codes = 1
 
     # Connect to Firestore
     db = firestore.Client()

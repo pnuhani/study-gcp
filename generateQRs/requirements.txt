@@ -1,4 +1,4 @@
-qrcode[pil]
-google-cloud-firestore
-Pillow
-pytz 
+qrcode[pil]==7.4.2
+Pillow==10.0.1
+google-cloud-firestore==2.13.1
+pytz==2023.3 
