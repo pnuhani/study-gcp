@@ -173,20 +173,18 @@ if (error) {
 
         {/* Footer */}
         <div className="bg-gray-50 px-6 py-4 space-y-3">
+          <div className="text-center mb-3">
+            <p className="text-sm text-gray-600">
+              Need help? Contact CareVego Care for dietitian tips, usage guidance, and general enquiries
+            </p>
+          </div>
+          
           <button
             onClick={handleWhatsAppClick}
             className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-md text-lg flex items-center justify-center gap-2 transition-colors duration-200"
           >
             <WhatsAppIcon className="w-5 h-5" />
             Talk with CareVego Care
-          </button>
-          
-          <button
-            onClick={() => navigate(`/qr/${id}/edit`)}
-            className="w-full bg-[#3a5a78] hover:bg-[#2c3e50] text-white py-3 px-6 rounded-md text-lg flex items-center justify-center gap-2 transition-colors duration-200"
-          >
-            <EditIcon className="w-5 h-5" />
-            Edit Information
           </button>
         </div>
       </div>
