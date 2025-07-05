@@ -1,0 +1,4 @@
+qrcode[pil]
+google-cloud-firestore
+Pillow
+pytz 
