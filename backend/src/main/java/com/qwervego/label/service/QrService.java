@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.BindingResult;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import com.qwervego.label.dto.ErrorResponse;
 import com.qwervego.label.dto.QrResponse;
@@ -18,6 +19,7 @@ import com.qwervego.label.model.Qr;
 import com.qwervego.label.repository.FirestoreQrRepository;
 
 @Service
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true", matchIfMissing = false)
 public class QrService {
 
     private final BCryptPasswordEncoder passwordEncoder;
@@ -118,9 +120,5 @@ public class QrService {
 
     public boolean checkPassword(String rawPassword, String hashedPassword) {
         return passwordEncoder.matches(rawPassword, hashedPassword);
-    }
-
-    public Optional<Qr> findByPhoneNumber(String phoneNumber) {
-        return qrRepository.findByPhoneNumber(phoneNumber);
     }
 }

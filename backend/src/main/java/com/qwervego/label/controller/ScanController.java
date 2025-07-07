@@ -7,6 +7,7 @@ import com.qwervego.label.service.FirebaseAuthService;
 import com.qwervego.label.repository.FirestoreQrRepository;
 import com.qwervego.label.model.Qr;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "*")
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true", matchIfMissing = false)
 public class ScanController {
 
     private final OtpService otpService;

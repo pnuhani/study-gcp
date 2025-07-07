@@ -7,6 +7,7 @@ import com.qwervego.label.model.Qr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +18,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Repository
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true", matchIfMissing = false)
 public class FirestoreQrRepository {
     private static final Logger logger = LoggerFactory.getLogger(FirestoreQrRepository.class);
     private final Firestore firestore;
@@ -48,101 +50,105 @@ public class FirestoreQrRepository {
     }
 
     public Optional<Qr> findById(String id) {
-        logger.info("Finding QR document by ID: {}", id);
+        logger.info("Finding QR document with ID: {}", id);
         try {
             DocumentReference docRef = firestore.collection(COLLECTION_NAME).document(id);
             ApiFuture<DocumentSnapshot> future = docRef.get();
             DocumentSnapshot document = future.get();
             
             if (document.exists()) {
+                Qr qr = convertToQr(document);
                 logger.info("Found QR document with ID: {}", id);
-                return Optional.of(convertToQr(document));
+                return Optional.of(qr);
+            } else {
+                logger.warn("QR document not found with ID: {}", id);
+                return Optional.empty();
             }
-            logger.info("No QR document found with ID: {}", id);
+        } catch (Exception e) {
+            logger.error("Error finding QR document with ID {}: {}", id, e.getMessage(), e);
             return Optional.empty();
-        } catch (InterruptedException | ExecutionException e) {
-            logger.error("Error fetching QR document with ID {}: {}", id, e.getMessage(), e);
-            throw new RuntimeException("Error fetching QR code", e);
+        }
+    }
+
+    public List<Qr> findAll() {
+        logger.info("Finding all QR documents");
+        try {
+            ApiFuture<QuerySnapshot> future = firestore.collection(COLLECTION_NAME).get();
+            QuerySnapshot querySnapshot = future.get();
+            
+            List<Qr> qrList = new ArrayList<>();
+            for (QueryDocumentSnapshot document : querySnapshot.getDocuments()) {
+                Qr qr = convertToQr(document);
+                if (qr != null) {
+                    qrList.add(qr);
+                }
+            }
+            
+            logger.info("Found {} QR documents", qrList.size());
+            return qrList;
+        } catch (Exception e) {
+            logger.error("Error finding all QR documents: {}", e.getMessage(), e);
+            return new ArrayList<>();
         }
     }
 
     public Page<Qr> findAll(Pageable pageable) {
-        logger.info("Finding all QR documents with pagination - page: {}, size: {}", 
-            pageable.getPageNumber(), pageable.getPageSize());
+        logger.info("Finding QR documents with pagination: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
         try {
             Query query = firestore.collection(COLLECTION_NAME)
-                .offset(pageable.getPageNumber() * pageable.getPageSize())
-                .limit(pageable.getPageSize());
+                .orderBy("createdDate", Query.Direction.DESCENDING)
+                .limit(pageable.getPageSize())
+                .offset((int) pageable.getOffset());
+            
+            ApiFuture<QuerySnapshot> future = query.get();
+            QuerySnapshot querySnapshot = future.get();
+            
+            List<Qr> qrList = new ArrayList<>();
+            for (QueryDocumentSnapshot document : querySnapshot.getDocuments()) {
+                Qr qr = convertToQr(document);
+                if (qr != null) {
+                    qrList.add(qr);
+                }
+            }
             
             // Get total count
-            long total = firestore.collection(COLLECTION_NAME)
-                .get().get().getDocuments().size();
-            logger.info("Total QR documents count: {}", total);
+            ApiFuture<QuerySnapshot> countFuture = firestore.collection(COLLECTION_NAME).get();
+            QuerySnapshot countSnapshot = countFuture.get();
+            long totalElements = countSnapshot.size();
             
-            // Get paginated results
-            List<Qr> qrs = query.get().get().getDocuments().stream()
-                .map(this::convertToQr)
-                .collect(Collectors.toList());
-            
-            logger.info("Retrieved {} QR documents for current page", qrs.size());
-            return new PageImpl<>(qrs, pageable, total);
-        } catch (InterruptedException | ExecutionException e) {
-            logger.error("Error fetching QR documents: {}", e.getMessage(), e);
-            throw new RuntimeException("Error fetching QR codes", e);
+            logger.info("Found {} QR documents out of {} total", qrList.size(), totalElements);
+            return new PageImpl<>(qrList, pageable, totalElements);
+        } catch (Exception e) {
+            logger.error("Error finding QR documents with pagination: {}", e.getMessage(), e);
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
         }
     }
 
-    public List<Qr> findAllById(Iterable<String> ids) {
-        List<Qr> results = new ArrayList<>();
-        for (String id : ids) {
-            findById(id).ifPresent(results::add);
+    public List<Qr> findAllById(List<String> ids) {
+        logger.info("Finding QR documents with IDs: {}", ids);
+        try {
+            List<Qr> qrList = new ArrayList<>();
+            for (String id : ids) {
+                Optional<Qr> qrOpt = findById(id);
+                qrOpt.ifPresent(qrList::add);
+            }
+            
+            logger.info("Found {} QR documents out of {} requested", qrList.size(), ids.size());
+            return qrList;
+        } catch (Exception e) {
+            logger.error("Error finding QR documents by IDs: {}", e.getMessage(), e);
+            return new ArrayList<>();
         }
-        return results;
     }
 
     public void deleteById(String id) {
         logger.info("Deleting QR document with ID: {}", id);
-        firestore.collection(COLLECTION_NAME).document(id).delete();
-        logger.info("Successfully deleted QR document with ID: {}", id);
-    }
-
-    public Optional<Qr> findByPhoneNumber(String phoneNumber) {
-        logger.info("Finding QR document by phone number: {}", phoneNumber);
         try {
-            QuerySnapshot querySnapshot = firestore.collection(COLLECTION_NAME)
-                .whereEqualTo("phoneNumber", phoneNumber)
-                .get()
-                .get();
-            
-            if (!querySnapshot.isEmpty()) {
-                logger.info("Found QR document with phone number: {}", phoneNumber);
-                return Optional.of(convertToQr(querySnapshot.getDocuments().get(0)));
-            }
-            logger.info("No QR document found with phone number: {}", phoneNumber);
-            return Optional.empty();
-        } catch (InterruptedException | ExecutionException e) {
-            logger.error("Error fetching QR document by phone number {}: {}", phoneNumber, e.getMessage(), e);
-            throw new RuntimeException("Error fetching QR code by phone number", e);
-        }
-    }
-
-    public Optional<Qr> findByEmail(String email) {
-        logger.info("Finding QR document by email: {}", email);
-        try {
-            QuerySnapshot querySnapshot = firestore.collection(COLLECTION_NAME)
-                .whereEqualTo("email", email)
-                .get()
-                .get();
-            
-            if (!querySnapshot.isEmpty()) {
-                logger.info("Found QR document with email: {}", email);
-                return Optional.of(convertToQr(querySnapshot.getDocuments().get(0)));
-            }
-            logger.info("No QR document found with email: {}", email);
-            return Optional.empty();
-        } catch (InterruptedException | ExecutionException e) {
-            logger.error("Error fetching QR document by email {}: {}", email, e.getMessage(), e);
-            throw new RuntimeException("Error fetching QR code by email", e);
+            DocumentReference docRef = firestore.collection(COLLECTION_NAME).document(id);
+            docRef.delete();
+            logger.info("Successfully deleted QR document with ID: {}", id);
+        } catch (Exception e) {
+            logger.error("Error deleting QR document with ID {}: {}", id, e.getMessage(), e);
         }
     }
 

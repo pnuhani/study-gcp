@@ -24,10 +24,10 @@ import java.util.Base64;
 public class FirestoreConfig {
     private final Logger logger = LoggerFactory.getLogger(FirestoreConfig.class);
 
-    @Value("${firebase.project.id}")
+    @Value("${firebase.project.id:}")
     private String projectId;
 
-    @Value("${firebase.credentials}")
+    @Value("${firebase.credentials:}")
     private String firebaseCredentials;
 
     @Bean

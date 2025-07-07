@@ -6,6 +6,7 @@ import com.qwervego.label.model.Admin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
@@ -13,6 +14,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Repository
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true", matchIfMissing = false)
 public class FirestoreAdminRepository {
     private static final Logger logger = LoggerFactory.getLogger(FirestoreAdminRepository.class);
     private final Firestore firestore;
@@ -44,48 +46,28 @@ public class FirestoreAdminRepository {
     }
 
     public Optional<Admin> findById(String id) {
-        logger.info("Finding admin document by ID: {}", id);
+        logger.info("Finding admin document with ID: {}", id);
         try {
             DocumentReference docRef = firestore.collection(COLLECTION_NAME).document(id);
             ApiFuture<DocumentSnapshot> future = docRef.get();
             DocumentSnapshot document = future.get();
             
             if (document.exists()) {
+                Admin admin = convertToAdmin(document);
                 logger.info("Found admin document with ID: {}", id);
-                return Optional.of(convertToAdmin(document));
+                return Optional.of(admin);
+            } else {
+                logger.warn("Admin document not found with ID: {}", id);
+                return Optional.empty();
             }
-            logger.info("No admin document found with ID: {}", id);
+        } catch (Exception e) {
+            logger.error("Error finding admin document with ID {}: {}", id, e.getMessage(), e);
             return Optional.empty();
-        } catch (InterruptedException | ExecutionException e) {
-            logger.error("Error fetching admin document with ID {}: {}", id, e.getMessage(), e);
-            throw new RuntimeException("Error fetching admin", e);
         }
-    }
-
-    public List<Admin> findAll() {
-        logger.info("Finding all admin documents");
-        try {
-            ApiFuture<QuerySnapshot> future = firestore.collection(COLLECTION_NAME).get();
-            List<QueryDocumentSnapshot> documents = future.get().getDocuments();
-            
-            logger.info("Retrieved {} admin documents", documents.size());
-            return documents.stream()
-                .map(this::convertToAdmin)
-                .collect(Collectors.toList());
-        } catch (InterruptedException | ExecutionException e) {
-            logger.error("Error fetching admin documents: {}", e.getMessage(), e);
-            throw new RuntimeException("Error fetching admins", e);
-        }
-    }
-
-    public void deleteById(String id) {
-        logger.info("Deleting admin document with ID: {}", id);
-        firestore.collection(COLLECTION_NAME).document(id).delete();
-        logger.info("Successfully deleted admin document with ID: {}", id);
     }
 
     public Optional<Admin> findByUsername(String username) {
-        logger.info("Finding admin document by username: {}", username);
+        logger.info("Finding admin document with username: {}", username);
         try {
             QuerySnapshot querySnapshot = firestore.collection(COLLECTION_NAME)
                 .whereEqualTo("username", username)
@@ -93,14 +75,48 @@ public class FirestoreAdminRepository {
                 .get();
             
             if (!querySnapshot.isEmpty()) {
+                Admin admin = convertToAdmin(querySnapshot.getDocuments().get(0));
                 logger.info("Found admin document with username: {}", username);
-                return Optional.of(convertToAdmin(querySnapshot.getDocuments().get(0)));
+                return Optional.of(admin);
             }
-            logger.info("No admin document found with username: {}", username);
+            logger.warn("Admin document not found with username: {}", username);
             return Optional.empty();
-        } catch (InterruptedException | ExecutionException e) {
-            logger.error("Error fetching admin document by username {}: {}", username, e.getMessage(), e);
-            throw new RuntimeException("Error fetching admin by username", e);
+        } catch (Exception e) {
+            logger.error("Error finding admin document with username {}: {}", username, e.getMessage(), e);
+            return Optional.empty();
+        }
+    }
+
+    public List<Admin> findAll() {
+        logger.info("Finding all admin documents");
+        try {
+            ApiFuture<QuerySnapshot> future = firestore.collection(COLLECTION_NAME).get();
+            QuerySnapshot querySnapshot = future.get();
+            
+            List<Admin> adminList = new ArrayList<>();
+            for (QueryDocumentSnapshot document : querySnapshot.getDocuments()) {
+                Admin admin = convertToAdmin(document);
+                if (admin != null) {
+                    adminList.add(admin);
+                }
+            }
+            
+            logger.info("Found {} admin documents", adminList.size());
+            return adminList;
+        } catch (Exception e) {
+            logger.error("Error finding all admin documents: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    public void deleteById(String id) {
+        logger.info("Deleting admin document with ID: {}", id);
+        try {
+            DocumentReference docRef = firestore.collection(COLLECTION_NAME).document(id);
+            docRef.delete();
+            logger.info("Successfully deleted admin document with ID: {}", id);
+        } catch (Exception e) {
+            logger.error("Error deleting admin document with ID {}: {}", id, e.getMessage(), e);
         }
     }
 

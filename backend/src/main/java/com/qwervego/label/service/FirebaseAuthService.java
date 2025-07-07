@@ -8,12 +8,14 @@ import com.google.firebase.auth.UserRecord.UpdateRequest;
 import com.qwervego.label.dto.AdminCreateRequest;
 import com.qwervego.label.model.Admin;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true", matchIfMissing = false)
 public class FirebaseAuthService {
     private final FirebaseAuth firebaseAuth;
 

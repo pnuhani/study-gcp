@@ -1,11 +1,15 @@
+package com.qwervego.label.config;
+
 import com.google.cloud.firestore.Firestore;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Component
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true", matchIfMissing = false)
 public class FirestoreHealthIndicator implements HealthIndicator {
 
     private static final Logger logger = LoggerFactory.getLogger(FirestoreHealthIndicator.class);

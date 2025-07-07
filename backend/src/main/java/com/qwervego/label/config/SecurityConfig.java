@@ -20,6 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @Configuration
 @EnableWebSecurity
@@ -27,8 +28,8 @@ public class SecurityConfig {
 
     private final FirebaseAuthenticationFilter firebaseAuthFilter;
 
-    public SecurityConfig(FirebaseAuthenticationFilter firebaseAuthFilter) {
-        this.firebaseAuthFilter = firebaseAuthFilter;
+    public SecurityConfig(Optional<FirebaseAuthenticationFilter> firebaseAuthFilter) {
+        this.firebaseAuthFilter = firebaseAuthFilter.orElse(null);
     }
 
     @Bean
@@ -40,13 +41,19 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/health/**").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/api/qr/**").permitAll()
                 .requestMatchers("/api/admin/get-email/**").permitAll()
                 .requestMatchers("/api/admin/superadmin/**").hasRole("SUPERADMIN")
                 .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN")
                 .anyRequest().authenticated()
-            )
-            .addFilterBefore(firebaseAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            );
+
+        // Only add Firebase filter if it's available
+        if (firebaseAuthFilter != null) {
+            http.addFilterBefore(firebaseAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        }
 
         return http.build();
     }

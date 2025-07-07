@@ -4,6 +4,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -14,6 +15,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true", matchIfMissing = false)
 public class OtpService {
     
     private final FirebaseAuth firebaseAuth;
@@ -51,24 +53,22 @@ public class OtpService {
     
     public Map<String, Object> sendOtp(String phoneNumber) {
         try {
-            // Normalize phone number
             String normalizedPhone = normalizePhoneNumber(phoneNumber);
             
-            // Generate session ID
-            String sessionId = generateSessionId();
+            // Generate OTP (for demo purposes, use a fixed OTP)
+            String otp = "123456"; // In production, generate random OTP
             
-            // Create OTP session
+            // Create session
+            String sessionId = generateSessionId();
             OtpSession session = new OtpSession(normalizedPhone, sessionId);
             otpSessions.put(sessionId, session);
             
             // Schedule cleanup after 10 minutes
-            scheduler.schedule(() -> {
-                otpSessions.remove(sessionId);
-            }, 10, TimeUnit.MINUTES);
+            scheduler.schedule(() -> cleanupSession(sessionId), 10, TimeUnit.MINUTES);
             
-            // In a real implementation, you would integrate with SMS service
-            // For now, we'll simulate OTP sending
-            // In production, you would use Firebase Phone Auth or a service like Twilio
+            // Create or get Firebase user
+            String uid = createOrGetFirebaseUser(normalizedPhone);
+            session.setUid(uid);
             
             return Map.of(
                 "success", true,
@@ -86,48 +86,43 @@ public class OtpService {
     }
     
     public Map<String, Object> verifyOtp(String sessionId, String otp) {
-        OtpSession session = otpSessions.get(sessionId);
-        
-        if (session == null) {
-            return Map.of(
-                "success", false,
-                "error", "Invalid or expired session"
-            );
-        }
-        
-        // Check if session is expired (10 minutes)
-        if (System.currentTimeMillis() - session.getCreatedAt() > 10 * 60 * 1000) {
-            otpSessions.remove(sessionId);
-            return Map.of(
-                "success", false,
-                "error", "OTP session expired"
-            );
-        }
-        
-        // For demo purposes, we'll accept any 6-digit OTP
-        // In production, you would validate against the actual OTP sent
-        if (otp == null || otp.length() != 6 || !otp.matches("\\d{6}")) {
-            return Map.of(
-                "success", false,
-                "error", "Invalid OTP format"
-            );
-        }
-        
         try {
+            OtpSession session = otpSessions.get(sessionId);
+            
+            if (session == null) {
+                return Map.of(
+                    "success", false,
+                    "error", "Invalid session"
+                );
+            }
+            
+            // Check if session is expired (10 minutes)
+            if (System.currentTimeMillis() - session.getCreatedAt() > 10 * 60 * 1000) {
+                otpSessions.remove(sessionId);
+                return Map.of(
+                    "success", false,
+                    "error", "Session expired"
+                );
+            }
+            
+            // For demo purposes, accept any 6-digit OTP
+            if (otp == null || otp.length() != 6) {
+                return Map.of(
+                    "success", false,
+                    "error", "Invalid OTP format"
+                );
+            }
+            
             // Mark session as verified
             session.setVerified(true);
             
-            // Create or get Firebase user
-            String uid = createOrGetFirebaseUser(session.getPhoneNumber());
-            session.setUid(uid);
-            
-            // Generate Firebase custom token
-            String customToken = firebaseAuth.createCustomToken(uid);
+            // Generate custom token for Firebase
+            String customToken = firebaseAuth.createCustomToken(session.getUid());
             
             return Map.of(
                 "success", true,
                 "message", "OTP verified successfully",
-                "uid", uid,
+                "uid", session.getUid(),
                 "customToken", customToken,
                 "phoneNumber", session.getPhoneNumber()
             );

@@ -7,6 +7,7 @@ import com.qwervego.label.dto.AdminResponse;
 import com.qwervego.label.model.Admin;
 import com.qwervego.label.repository.FirestoreAdminRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true", matchIfMissing = false)
 public class AdminService {
     private final FirestoreAdminRepository adminRepository;
     private final FirebaseAuthService firebaseAuthService;
