@@ -14,6 +14,8 @@ import AdminCreate from './components/AdminCreate';
 import ThemeWrapper from './components/ThemeWrapper';
 import RegistrationSuccess from './components/RegistrationSuccess';
 import ProtectedRoute from './components/ProtectedRoute';
+import QrSignIn from './components/QrSignIn';
+import QrSignInSuccess from './components/QrSignInSuccess';
 
 const router = createBrowserRouter([
   {
@@ -43,6 +45,14 @@ const router = createBrowserRouter([
       {
         path: "qr/:id/success",
         element: <RegistrationSuccess />
+      },
+      {
+        path: "qr-signin",
+        element: <QrSignIn />
+      },
+      {
+        path: "qr-signin/success",
+        element: <QrSignInSuccess />
       },
     ]
   },
