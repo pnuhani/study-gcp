@@ -16,6 +16,8 @@ import RegistrationSuccess from './components/RegistrationSuccess';
 import ProtectedRoute from './components/ProtectedRoute';
 import QrSignIn from './components/QrSignIn';
 import QrSignInSuccess from './components/QrSignInSuccess';
+import NewQrSignIn from './components/NewQrSignIn';
+import WelcomePage from './components/WelcomePage';
 
 const router = createBrowserRouter([
   {
@@ -53,6 +55,14 @@ const router = createBrowserRouter([
       {
         path: "qr-signin/success",
         element: <QrSignInSuccess />
+      },
+      {
+        path: "signin",
+        element: <NewQrSignIn />
+      },
+      {
+        path: "welcome",
+        element: <WelcomePage />
       },
     ]
   },
