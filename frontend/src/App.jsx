@@ -18,6 +18,7 @@ import QrSignIn from './components/QrSignIn';
 import QrSignInSuccess from './components/QrSignInSuccess';
 import NewQrSignIn from './components/NewQrSignIn';
 import WelcomePage from './components/WelcomePage';
+import ScanPage from './components/ScanPage';
 
 const router = createBrowserRouter([
   {
@@ -63,6 +64,10 @@ const router = createBrowserRouter([
       {
         path: "welcome",
         element: <WelcomePage />
+      },
+      {
+        path: "scan",
+        element: <ScanPage />
       },
     ]
   },
