@@ -14,6 +14,8 @@ import AdminCreate from './components/AdminCreate';
 import ThemeWrapper from './components/ThemeWrapper';
 import RegistrationSuccess from './components/RegistrationSuccess';
 import ProtectedRoute from './components/ProtectedRoute';
+import UserSignIn from './components/UserSignIn';
+import UserDetail from './components/UserDetail';
 
 const router = createBrowserRouter([
   {
@@ -87,6 +89,14 @@ const router = createBrowserRouter([
         element: <AdminDashboard />
       }
     ]
+  },
+  {
+    path: "/user/signin",
+    element: <UserSignIn />
+  },
+  {
+    path: "/user-detail",
+    element: <UserDetail />
   },
   {
     path: "*",
