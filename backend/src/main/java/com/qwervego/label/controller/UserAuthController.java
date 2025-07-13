@@ -38,16 +38,22 @@ public class UserAuthController {
             if (tokenPhone == null || !tokenPhone.equals(phoneNumber)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Phone number mismatch or not verified"));
             }
+            
+            // Check if user already exists
+            boolean isNewUser = userRepository.findByPhoneNumber(tokenPhone).isEmpty();
+            
             // Register phone number in DB if not exists
-            if (userRepository.findByPhoneNumber(tokenPhone).isEmpty()) {
+            if (isNewUser) {
                 User newUser = new User();
                 newUser.setPhoneNumber(tokenPhone);
                 newUser.setCreatedDate(new Date());
                 userRepository.save(newUser);
             }
+            
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("phoneNumber", tokenPhone);
+            response.put("isNewUser", isNewUser);
             return ResponseEntity.ok(response);
         } catch (FirebaseAuthException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid or expired OTP token"));

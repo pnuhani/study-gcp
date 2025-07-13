@@ -138,8 +138,14 @@ export default function UserSignIn() {
         localStorage.setItem('userPhone', phone);
         localStorage.setItem('userSignedIn', 'true');
         
-        // Redirect to landing page
-        navigate('/');
+        // Redirect based on user type
+        if (data.isNewUser) {
+          // New user - show product registration success page
+          navigate('/user-detail');
+        } else {
+          // Existing user - redirect to landing page
+          navigate('/');
+        }
       } else {
         throw new Error(data.error || 'Sign-in failed');
       }

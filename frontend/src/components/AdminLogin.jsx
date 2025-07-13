@@ -32,18 +32,22 @@ export default function AdminLogin() {
         const idToken = await user.getIdTokenResult()
         const role = idToken.claims.role
         
-        setAuthState({
-          isAuthenticated: true,
-          role: role,
-          initialized: true,
-        })
+        // Only redirect if user has admin role
+        if (role === "SUPERADMIN" || role === "ADMIN") {
+          setAuthState({
+            isAuthenticated: true,
+            role: role,
+            initialized: true,
+          })
 
-        // Navigate based on role
-        if (role === "SUPERADMIN") {
-          navigate("/superadmin-dashboard", { replace: true })
-        } else if (role === "ADMIN") {
-          navigate("/admin-dashboard", { replace: true })
+          // Navigate based on role
+          if (role === "SUPERADMIN") {
+            navigate("/superadmin-dashboard", { replace: true })
+          } else if (role === "ADMIN") {
+            navigate("/admin-dashboard", { replace: true })
+          }
         }
+        // If user has no admin role, do nothing (let them stay on login page or continue their flow)
       }
     })
 
